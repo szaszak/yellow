@@ -2,7 +2,7 @@
 source('fun/setup.R')
 
 # Estrutura de pastas
-pasta_dados        <- "../yellow_dados"
+pasta_dados        <- "../../yellow_dados"
 pasta_base         <- sprintf("%s/05_testes_viagens_20181111", pasta_dados)
 
 open_file <- sprintf('%s/viagens_processadas_todas.csv', pasta_base)

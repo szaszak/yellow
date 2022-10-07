@@ -6,8 +6,8 @@
 source('fun/setup.R')
 
 # Estrutura de pastas
-pasta_dados      <- "../yellow_dados"
-pasta_valhalla      <- "../valhalla_tiles_sp/pbf"
+pasta_dados      <- "../../yellow_dados"
+pasta_valhalla      <- "../../yellow_src/valhalla_tiles_sp/pbf"
 pasta_osm_sp <- sprintf("%s/02_osm_simplificado_sp", pasta_dados)
 dir.create(pasta_osm_sp, recursive = TRUE, showWarnings = FALSE)
 

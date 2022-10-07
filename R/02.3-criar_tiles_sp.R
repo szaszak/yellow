@@ -5,7 +5,7 @@
 source('fun/setup.R')
 
 # Estrutura de pastas
-pasta_geral_tiles    <- "/home/livre/Desktop/Base_GtsRegionais/GitLab/yellow/valhalla_tiles_sp"
+pasta_geral_tiles    <- "/home/livre/Desktop/Base_GtsRegionais/GitLab/yellow_src/valhalla_tiles_sp"
 pasta_valhalla_conf  <- sprintf("%s/conf", pasta_geral_tiles)
 pasta_valhalla_pbf   <- sprintf("%s/pbf", pasta_geral_tiles)
 pasta_valhalla_elev  <- sprintf("%s/elevation_tiles", pasta_geral_tiles)

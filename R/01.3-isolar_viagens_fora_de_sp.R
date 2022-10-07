@@ -18,7 +18,7 @@ sf_use_s2()
 
 
 # Estrutura de pastas
-pasta_dados      <- "../yellow_dados"
+pasta_dados      <- "../../yellow_dados"
 pasta_viagens_sp <- sprintf("%s/01_viagens_em_sp", pasta_dados)
 
 # Abrir a base integral original de viagens da Yellow (arquivo temporário)

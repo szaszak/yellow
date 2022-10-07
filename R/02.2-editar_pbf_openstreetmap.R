@@ -7,7 +7,7 @@ source('fun/setup.R')
 
 
 # Estrutura de pastas e arquivos
-pasta_geral_tiles    <- "/home/livre/Desktop/Base_GtsRegionais/GitLab/yellow/valhalla_tiles_sp"
+pasta_geral_tiles    <- "/home/livre/Desktop/Base_GtsRegionais/GitLab/yellow_src/valhalla_tiles_sp"
 pasta_valhalla_pbf   <- sprintf("%s/pbf", pasta_geral_tiles)
 
 osm_file_orig <- sprintf('%s/20220216_sao_paulo.osm.pbf', pasta_valhalla_pbf)

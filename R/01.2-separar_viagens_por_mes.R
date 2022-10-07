@@ -7,7 +7,7 @@
 source('fun/setup.R')
 
 # Estrutura de pastas
-pasta_dados      <- "../yellow_dados"
+pasta_dados      <- "../../yellow_dados"
 pasta_viagens_sp <- sprintf("%s/01_viagens_em_sp", pasta_dados)
 
 

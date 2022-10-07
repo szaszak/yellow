@@ -32,7 +32,7 @@
 source('fun/setup.R')
 
 # Estrutura de pastas
-pasta_dados      <- "../yellow_dados"
+pasta_dados      <- "../../yellow_dados"
 pasta_osm_sp <- sprintf("%s/02_osm_simplificado_sp", pasta_dados)
 
 # Abrir shapefile de ruas do OSM simplificado, com dados de infra cicloviária

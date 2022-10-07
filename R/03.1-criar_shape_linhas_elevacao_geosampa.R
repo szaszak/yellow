@@ -8,7 +8,7 @@ source('fun/setup.R')
 pasta_geosampa     <- "/home/livre/Desktop/Base_GtsRegionais/Arquivos_Geosampa/MEIOFISICO"
 pasta_curva_interm <- sprintf("%s/SIRGAS_SHP_Curva_Intermediaria", pasta_geosampa)
 pasta_curva_mestra <- sprintf("%s/SIRGAS_SHP_Curva_Mestra", pasta_geosampa)
-pasta_dados        <- "/home/livre/Desktop/Base_GtsRegionais/GitLab/yellow/yellow_dados"
+pasta_dados        <- "/home/livre/Desktop/Base_GtsRegionais/GitLab/yellow_dados"
 pasta_elevacao     <- sprintf("%s/03_curva_elevacao_sp", pasta_dados)
 pasta_temporaria   <- sprintf("%s/tmp_elevacao", pasta_elevacao)
 dir.create(pasta_temporaria, recursive = TRUE, showWarnings = FALSE)

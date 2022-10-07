@@ -5,7 +5,7 @@
 source('fun/setup.R')
 
 # Estrutura de pastas
-pasta_dados      <- "../yellow_dados"
+pasta_dados      <- "../../yellow_dados"
 dados_originais  <- sprintf("%s/00_dados_originais", pasta_dados)
 pasta_osm_sp <- sprintf("%s/02_osm_simplificado_sp", pasta_dados)
 
