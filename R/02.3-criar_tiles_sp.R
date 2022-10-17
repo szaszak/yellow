@@ -10,7 +10,8 @@ pasta_valhalla_conf  <- sprintf("%s/conf", pasta_geral_tiles)
 pasta_valhalla_pbf   <- sprintf("%s/pbf", pasta_geral_tiles)
 pasta_valhalla_elev  <- sprintf("%s/elevation_tiles", pasta_geral_tiles)
 pasta_valhalla_tiles <- sprintf("%s/valhalla_tiles", pasta_geral_tiles)
-out_pbf_file <- sprintf('%s/20220216_sao_paulo_edited_20220915.osm.pbf', pasta_valhalla_pbf)
+# out_pbf_file <- sprintf('%s/20220216_sao_paulo_edited_20220915.osm.pbf', pasta_valhalla_pbf)
+out_pbf_file <- sprintf('%s/20220216_sao_paulo.osm.pbf', pasta_valhalla_pbf)
 
 # ----------------------------------------
 # 1. Configurar tiles para SP com elevação
@@ -40,6 +41,7 @@ arg_vc3 <- sprintf('--mjolnir-timezone %s/timezones.sqlite', pasta_valhalla_tile
 arg_vc4 <- sprintf('--mjolnir-admin %s/admins.sqlite', pasta_valhalla_tiles)
 arg_vc5 <- sprintf('--additional-data-elevation %s', pasta_valhalla_elev)
 arg_vc6 <- sprintf(' > %s/valhalla.json', pasta_valhalla_conf)
+sprintf('%s %s %s %s %s %s %s', valhalla_build_config_path, arg_vc1, arg_vc2, arg_vc3, arg_vc4, arg_vc5, arg_vc6)
 system2(command = valhalla_build_config_path, 
         args = c(arg_vc1, arg_vc2, arg_vc3, arg_vc4, arg_vc5, arg_vc6))
 
@@ -89,6 +91,19 @@ arg_c5 <- "{\"lat\": -23.55585, \"lon\": -46.70469},"
 arg_c6 <- "{\"lat\": -23.55584, \"lon\": -46.70469}, "
 arg_c7 <- "{\"lat\": -23.59349, \"lon\": -46.65145}"
 arg_c8 <- "]}' | jq '.'"
+system2(command = curl_path, args = c(arg_c1, arg_c2, arg_c3, arg_c4, arg_c5, arg_c6, arg_c7, arg_c8))
+
+
+# Traçar rota em SP
+curl_path <- sprintf("/usr/bin/curl")
+arg_c1 <- "-X POST http://localhost:8002/route"
+arg_c2 <- "-H 'Content-Type: application/json'"
+arg_c3 <- "-H 'cache-control: no-cache'"
+arg_c4 <- "--data '{\"locations\": ["
+arg_c5 <- "{\"lat\": -23.60657, \"lon\": -46.69673},"
+arg_c6 <- "{\"lat\": -23.60695, \"lon\": -46.69648}], "
+arg_c7 <- "\"costing\":\"auto\""
+arg_c8 <- "}' | jq '.'"
 system2(command = curl_path, args = c(arg_c1, arg_c2, arg_c3, arg_c4, arg_c5, arg_c6, arg_c7, arg_c8))
 
 

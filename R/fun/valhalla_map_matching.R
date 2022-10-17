@@ -595,6 +595,7 @@ clean_matched_points <- function(trip_df, n_trip_edges) {
 # Calcula distâncias com base nos edges (infra cicloviária, áreas restritas)
 obter_dados_edges <- function(trip_df) {
   # Selecionar colunas de interesse
+  # trip_df <- trecho
   calculos_edges <- trip_df %>% select(edges.way_id, edges.id, osm_cycletype, area_restrita, edges.length)
   
   # Para calcular as distâncias, temos que pegar os edges.way_id na ordem em que
@@ -613,6 +614,34 @@ obter_dados_edges <- function(trip_df) {
     # que linhas que se repetem (ex. foram usadas na ida e na volta) continuem
     # no dataframe para a soma das extensões
     filter(edges.way_id != next_way_id | edges.id != next_edge_id | next_dist != edges.length)
+  
+  
+  
+  
+  # Para calcular as distâncias, temos que pegar os edges.way_id na ordem em que
+  # estão, com suas respectivas extensões (um mesmo id pode ter uma extensão 
+  # diferente na linha seguinte) e somar os valores. Não podemos usar o distinct() 
+  # aqui, se não perderemos trajetos que foram e voltaram passando por trechos iguais
+  calculos_edges <- 
+    calculos_edges %>% 
+    # Vamos puxar os dados de edges.way_id e edges.length da linha de baixo
+    # para novas colunas
+    mutate(next_way_id  = shift(edges.way_id, type = 'lead'),
+           next_edge_id = shift(edges.id, type = 'lead'), 
+           next_dist    = shift(edges.length, type = 'lead'))
+  
+  # Guardar última linha, que será retirada no filtro a seguir
+  calculos_edges_tail <- calculos_edges %>% tail(1)
+  
+  # O filtro aqui é: se a linha de baixo tiver um id diferente da atual ou
+  # tiver uma extensão diferente da atual, manter essa linha - isso faz com
+  # que linhas que se repetem (ex. foram usadas na ida e na volta) continuem
+  # no dataframe para a soma das extensões
+  calculos_edges <- 
+    calculos_edges %>% 
+    filter(edges.way_id != next_way_id | edges.id != next_edge_id | next_dist != edges.length) %>% 
+    # Adicionar última linha, que havia sido descartada pelo filtro
+    rbind(calculos_edges_tail)
   
   # Calcular extensão total dos edges (sem repetição dos edges)
   extensao_edges <- sum(calculos_edges$edges.length)
@@ -859,6 +888,7 @@ run_map_matching <- function(trecho, sel_trip, tempo_viagem, dist_min_viagem, ac
   trace_route_results <- trace_route_valhalla_main(trecho, sel_trip, active_mode)
   dist_rota  <- trace_route_results[[1]]
   shape_rota <- trace_route_results[[2]]
+  # mapview(shape_rota)
   
   # Se distância foi calculada e for maior que a mínima, continuar para o map 
   # matching completo
@@ -1053,6 +1083,7 @@ processar_trecho <- function(viagem, sel_trip, cp_a, cp_viagem, qtd_quebras, qtd
         # detectadas, quantidade de iterações para remoção de outliers extremos e
         # proporção de pontos do trecho dentro de um centróide de x metros de raio
         mutate(cod_proc        = cod_proc, 
+               n_points        = nrow(viagem),
                qtd_quebras     = qtd_quebras, 
                qtd_it_outliers = qtd_iteracoes,
                prop_centr_100 = detectar_proporcao_centroide(viagem, tam_raio = 100),

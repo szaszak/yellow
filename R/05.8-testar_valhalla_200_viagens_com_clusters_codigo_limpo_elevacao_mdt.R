@@ -7,7 +7,6 @@ source('fun/funcoes_rotas.R')
 source('fun/valhalla_map_matching.R')
 
 
-
 # Estrutura de pastas
 pasta_dados        <- "../../yellow_dados"
 pasta_viagens_sp   <- sprintf("%s/01_viagens_em_sp", pasta_dados)
@@ -16,7 +15,7 @@ pasta_elevacao     <- sprintf("%s/03_curva_elevacao_sp", pasta_dados)
 pasta_semaforos    <- sprintf("%s/04_semaforos_sp", pasta_dados)
 # pasta_base   <- sprintf("%s/05_testes_20_viagens_clusters", pasta_dados)
 # pasta_base         <- sprintf("%s/05_testes_200_viagens_clusters", pasta_dados)
-pasta_base         <- sprintf("%s/05_testes_viagens_20181111", pasta_dados)
+pasta_base         <- sprintf("%s/05_testes_viagens_20181112-20181117", pasta_dados)
 pasta_viagens_gpkg <- sprintf("%s/viagens_processadas_gpkg", pasta_base)
 pasta_viagens_pngs <- sprintf("%s/viagens_processadas_pngs", pasta_base)
 pasta_viagens_csv1 <- sprintf("%s/viagens_processadas_csv1", pasta_base)
@@ -28,10 +27,22 @@ dir.create(pasta_viagens_csv2, recursive = TRUE, showWarnings = FALSE)
 
 
 # Criar arquivo de log com header simples
-log_file <- sprintf('%s/viagens_processadas_log.csv', pasta_base)
-log_head <- 'trip_id;id_trecho;proc_status'
-write(log_head, file = log_file, append = FALSE)
+log_base_name <- 'viagens_processadas_log'
+log_file <- sprintf('%s/%s.csv', pasta_base, log_base_name)
 
+# Se arquivo não existe, criar um header em um novo arquivo
+if (!log_file %in% list.files(pasta_base, pattern = '^viagens_processadas_log.csv', full.names = TRUE)) {
+  
+  log_head <- 'trip_id;id_trecho;proc_status'
+  write(log_head, file = log_file, append = FALSE)
+  
+  # Se arquivo já existe, criar uma cópia de segurança - novos resultados serão
+  # adicionados ao arquivo
+} else {
+  # Criar cópia do arquivo .pbf na nova pasta
+  ts <- Sys.time() %>% str_replace(' -03$', '') %>% str_replace(' ', '_') %>% str_replace_all('[-:]', '')
+  file.copy(log_file, sprintf('%s/%s_BKP_%s.csv', pasta_base, log_base_name, ts))
+}
 
 
 # ----------------------------------------------------------
@@ -102,7 +113,7 @@ qtd_min_pontos   <- 18
 # 90 segundos é quando há um salto de degradação no map matching da rota
 tempo_max_quebra <- 90
 
-# Rotas com frequência de sinal de 1 ponto a cada 30 seg possuíam erro de 0,11% 
+# Rotas com frequência de sinal de 1 ponto a cada 30 seg possuíam erro de 0,01% 
 # (Newson e Krumm, 2009), mas inspeções manuais nos dados mostraram que a 
 # amostragem média deveria estar abaixo de 12 segundos (~200m)
 interv_med_ptos  <- 12
@@ -148,7 +159,9 @@ processar_viagens <- function(sel_trip, df_trips) {
   # sel_trip <- '282280' # viagens estranhas pelo entorno do Ibirapuera
   # sel_trip <- '290375' # estudar começo - santo amaro com roque petroni jr - grandes zigue-zagues
   # sel_trip <- '167857'
-  # sel_trip <- '103770' # Viagem quebrada em 5 trechos... iguais!?
+  
+  # Testar diferença entre dists do trace_route() e trace_attributes(2)
+  # sel_trip <- '180975'; df_trips = yellow_sp # rota curta Av. Pedroso de Morais rumo ao metrô F. Lima
   
   # rm(cp_a, cp_b, cp_c, cp_d, cp_e, tam_vg, result_outliers, qtd_iteracoes, quebras_de_sinal, qtd_quebras, cp_viagem, cod_proc, trecho, trecho1, trecho2, cp_a2, cp_mm, cp_trecho, sel_trip, viagem)
   # rm(map_matching_results, shape_rota)
@@ -164,7 +177,7 @@ processar_viagens <- function(sel_trip, df_trips) {
   viagem <- df_trips %>% filter(trip_id == {{sel_trip}})
   tam_vg <- nrow(viagem)
   # viagem %>% st_as_sf(coords = c("lon", "lat"), crs = 4326) %>% mapview(cex = 3, zcol = 'timestamps', at = seq(min(.$timestamps), max(.$timestamps), 200))
-  
+  viagem %>% st_as_sf(coords = c("lon", "lat"), crs = 4326) %>% mapview()
   
   
   
@@ -391,12 +404,33 @@ yellow_sp <- yellow_sp %>% mutate(n_points = as.numeric(n_points))
 # Filtrar rotas com 18+ pontos para rodar e em um determinado intervalo de tempo
 rotas_de_teste <- 
   yellow_sp %>% 
+  # Viagens no dia 2018-11-10
+  # filter(timestamps >= 1541815200 & timestamps <= 1541901599 & n_points >= 18) %>%
   # Viagens no dia 2018-11-11
-  filter(timestamps >= 1541901600 & timestamps <= 1541987999 & n_points >= 18) %>% 
+  # filter(timestamps >= 1541901600 & timestamps <= 1541987999 & n_points >= 18) %>%
+  # Viagens no dia 2018-11-12 a 2018-11-17 (inclusos)
+  filter(timestamps >= 1541988000 & timestamps <= 1542506399 & n_points >= 18) %>%
   select(trip_id) %>% 
   distinct() %>% 
   arrange(trip_id)
 
+# Quais rotas já foram executadas?
+rotas_ja_executadas <- read_delim(log_file, delim = ';', col_types = cols(.default = "c"))
+
+# Qual a última rota executada?
+ult_exec <- rotas_ja_executadas %>% select(trip_id) %>% tail(1)
+
+# Tirar essa rota do arquivo de log
+rotas_ja_executadas <- rotas_ja_executadas %>% filter(trip_id != ult_exec$trip_id)
+
+# Salvar novo arquivo de log, sem esta rota
+write_delim(rotas_ja_executadas, log_file, delim = ';', append = FALSE)
+
+# Atualizar rotas de teste, removendo as que já haviam sido executadas
+rotas_de_teste <- rotas_de_teste %>% filter(!rotas_de_teste$trip_id %in% rotas_ja_executadas$trip_id)
+
+
+detach("package:tidylog")
 (start = Sys.time())
 walk(rotas_de_teste$trip_id, processar_viagens, yellow_sp)
 Sys.time() - start
