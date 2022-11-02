@@ -1,6 +1,15 @@
 # Configura o Valhalla para a cidade de São Paulo, parte 2 - cria os tiles com elevação
 # e os arquivos de configuração necessários para rodar
 
+
+# ------------------------------------------------------------------------------
+#  Atenção - tem algo errado neste script. Ao final, o Valhalla diz que as buscas
+#  estão fora da área. Tudo parece ok, mas o arquivo "duplicateways.txt", que
+#  deveria ser gerado na pasta "valhalla_tiles_sp" está sendo gerado na pasta R,
+#  de onde este script é rodado. Pode ser isso. Mudar o local base de onde ele
+#  roda para a pasta "valhalla_tiles_sp"
+# ------------------------------------------------------------------------------
+
 # carregar bibliotecas
 source('fun/setup.R')
 
