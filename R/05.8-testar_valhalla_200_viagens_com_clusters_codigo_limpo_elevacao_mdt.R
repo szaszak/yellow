@@ -15,7 +15,7 @@ pasta_elevacao     <- sprintf("%s/03_curva_elevacao_sp", pasta_dados)
 pasta_semaforos    <- sprintf("%s/04_semaforos_sp", pasta_dados)
 # pasta_base   <- sprintf("%s/05_testes_20_viagens_clusters", pasta_dados)
 # pasta_base         <- sprintf("%s/05_testes_200_viagens_clusters", pasta_dados)
-pasta_base         <- sprintf("%s/05_testes_viagens_20181112-20181117", pasta_dados)
+pasta_base         <- sprintf("%s/06_testes_viagens_pre_modelo", pasta_dados)
 pasta_viagens_gpkg <- sprintf("%s/viagens_processadas_gpkg", pasta_base)
 pasta_viagens_pngs <- sprintf("%s/viagens_processadas_pngs", pasta_base)
 pasta_viagens_csv1 <- sprintf("%s/viagens_processadas_csv1", pasta_base)
@@ -158,7 +158,7 @@ processar_viagens <- function(sel_trip, df_trips) {
   # sel_trip <-'082697' # parque das bicicletas - pontos dispersos não sendo identificados nos filtros - veloc médias finais super altas
   # sel_trip <- '282280' # viagens estranhas pelo entorno do Ibirapuera
   # sel_trip <- '290375' # estudar começo - santo amaro com roque petroni jr - grandes zigue-zagues
-  # sel_trip <- '167857'
+  # sel_trip <- '031101'
   
   # Testar diferença entre dists do trace_route() e trace_attributes(2)
   # sel_trip <- '180975'; df_trips = yellow_sp # rota curta Av. Pedroso de Morais rumo ao metrô F. Lima
@@ -367,7 +367,7 @@ processar_viagens <- function(sel_trip, df_trips) {
     # Processar trecho da viagem, fazendo map matching e registrando resultados
     processar_trecho(trecho, sel_trip, cp_a2, cp_viagem, qtd_quebras, qtd_iteracoes,
                      tempo_min_viagem, qtd_min_pontos, dist_min_viagem, 
-                     active_mode = 'pedestrian',
+                     active_mode = 'bicycle',
                      pontos_elevacao, vias_ciclo, vias_restritas, semaforos,
                      pasta_viagens_gpkg, pasta_viagens_pngs, 
                      pasta_viagens_csv1, pasta_viagens_csv2)
@@ -379,7 +379,7 @@ processar_viagens <- function(sel_trip, df_trips) {
 # ----------------------------------------------------------
 # Testar com uma única viagem
 # ----------------------------------------------------------
-# rotas_de_teste <- '103770'
+# rotas_de_teste <- '027463'
 # walk(rotas_de_teste, processar_viagens, yellow_sp)
 
 

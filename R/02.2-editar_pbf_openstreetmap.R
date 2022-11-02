@@ -12,7 +12,7 @@ pasta_valhalla_pbf   <- sprintf("%s/pbf", pasta_geral_tiles)
 
 osm_file_orig <- sprintf('%s/20220216_sao_paulo.osm.pbf', pasta_valhalla_pbf)
 osm_file_tmp  <- sprintf('%s/lala.opl', pasta_valhalla_pbf)
-pbf_file_out  <- sprintf('%s/20220216_sao_paulo_edited_20220915.osm.pbf', pasta_valhalla_pbf)
+pbf_file_out  <- sprintf('%s/20220216_sao_paulo_edited_20221101.osm.pbf', pasta_valhalla_pbf)
 
 
 # Converter arquivo .pbf para o formato .opl, que pode ser lido como texto
@@ -40,6 +40,10 @@ osm <- osm %>% select(obj_type     = X1,
                       lat  = X10)
 
 
+# ------------------------------------------------------------------------------
+# Ciclovia do Rio Pinheiros
+# ------------------------------------------------------------------------------
+
 # Simplificar dataframe filtrando por string constante na coluna de tags
 osm_cycle <- osm %>% filter(str_detect(tags, 'cycleway'))
 
@@ -53,6 +57,16 @@ objetos_a_editar <-
   select(obj_type)
 
 
+# ------------------------------------------------------------------------------
+# Pontes em geral
+# ------------------------------------------------------------------------------
+
+# Selecionar os objetos (osm_id) de pontes que têm as tags 'foot' ou 'bicycle'
+objetos_a_editar2 <- 
+  osm %>% 
+  filter(str_detect(tags, 'bridge') & (str_detect(tags, 'foot') | str_detect(tags, 'bicycle'))) %>% 
+  select(obj_type)
+
 # # Teste de remoção - tags de 'foot=no' das linhas (objetos) selecionadas
 # osm_cycle %>% 
 #   mutate(tags = case_when(obj_type %in% objetos_a_editar$obj_type ~ str_replace(tags, 'foot=no', 'foot=yes'),
@@ -60,11 +74,18 @@ objetos_a_editar <-
 #   filter(obj_type %in% objetos_a_editar$obj_type) %>% 
 #   select(tags)
 
+objetos_a_editar <- objetos_a_editar %>% rbind(objetos_a_editar2)
 
-# Remover as tags de 'foot=no' das linhas (objetos) selecionadas
+# ------------------------------------------------------------------------------
+# Executar a edição
+# ------------------------------------------------------------------------------
+
+# Remover as tags de 'foot=no' / 'bicycle=no' das linhas (objetos) selecionadas
 osm <- 
   osm %>% 
   mutate(tags = case_when(obj_type %in% objetos_a_editar$obj_type ~ str_replace(tags, 'foot=no', 'foot=yes'),
+                          TRUE ~tags)) %>% 
+  mutate(tags = case_when(obj_type %in% objetos_a_editar$obj_type ~ str_replace(tags, 'bicycle=no', 'bicycle=yes'),
                           TRUE ~tags))
 
 # As tags com aspas duplas estão dando erro - remover as aspas

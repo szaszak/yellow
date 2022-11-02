@@ -80,7 +80,6 @@
 # "yellow_dados > 03_curva_elevacao_sp".
 # 
 # Checar se ambas as camadas estão em SIRGAS. Se não, converter.
-
 # 
 # ------------------------------------------------------------------------------
 # 1. Segmentar viário nas intersecções
@@ -95,21 +94,9 @@
 # Threshold: [ vazio ]
 # 
 # Resultado: camadas "Cleaned" e "Error". A camada "cleaned" tem o viário segmentado por quadra.
-
 # 
 # ------------------------------------------------------------------------------
-# 2. Criar coluna de "qgis_id", complementar à "osm_id"
-# https://gis.stackexchange.com/questions/405041/adding-leading-zeros-to-string-value-in-qgis
-# 
-# Field calculator > Create a new field
-# Output field name: qgis_id
-# Output field type: string
-# Output field length: 10
-# Fórmula: lpad("fid", 6, '0')
-# Fórmula alternativa [não usar]: lpad(@row_number, 6, '0')
-# 
-# ------------------------------------------------------------------------------
-# 3. Extrair vértices (pontos das esquinas)
+# 2. Extrair vértices (pontos das esquinas)
 # Queremos agora os pontos para cada intersecção.
 # https://gis.stackexchange.com/questions/306190/generating-start-and-end-points-for-linestrings
 # 
@@ -122,13 +109,25 @@
 # cada linha que se sobrepõe, ou seja, em uma esquina em "+" há 4 pontos sobrepostos.
 # 
 # ------------------------------------------------------------------------------
+# 3. Retirar pontos de vértices sobrepostos
+# Como estamos interessados só na localização estes pontos, podemos ficar com 
+# só um deles por intersecção.
+# https://gis.stackexchange.com/questions/374806/delete-duplicate-points-in-qgis
+# 
+# Processing toolbox > Delete duplicate geometries
+# Input layer: "Vertices" (resultante do processo 2)
+# 
+# Resultado: camada "Cleaned", com 1 ponto por intersecção. Para não confundir 
+# com a anterior, renomear para "Cleaned 2".
+# 
+# ------------------------------------------------------------------------------
 # 4. Puxar dados de elevação
 # Vamos pegar os dados de elevação dos pontos de viário gerados pelo cruzamento 
-# do raster do MDT de SP com o viário do OSM. Aqui, poderíamos refazer o processo 
-# do Drape, mas talvez seja mais rápido usar o nearest neighbor, descrito aqui.
+# do raster do MDT de SP com o viário do OSM. Aqui, poderíamos refazer o 
+# processo do Drape, mas talvez seja mais rápido usar o nearest neighbor, descrito aqui.
 # 
 # Processing toolbox > Join attributes by nearest
-# Input layer: "Cleaned 2" (resultante do processo 3)Input layer: "Vertices" (resultante do processo 2)
+# Input layer: "Cleaned 2" (resultante do processo 3)
 # Input layer 2: "viario_osm_com_elevacao_mdt_sem_z"
 # Layer 2 fields to copy: selecionar coluna "elev_mdt"
 # Habilitar a opção "Discard records which could not be joined"
@@ -136,11 +135,11 @@
 # Maximum distance: 0.5 meters
 # 
 # Resultado: camada "Joined layer", com todos os nearest neighbors encontrados 
-# para cada ponto de intersecção. 
+# para cada ponto de intersecção.
 # 
-# Temos 2 pontos para cada QGIS_ID. Como, novamente, precisamos somente de um 
-# dado único da altimetria, filtrar a camada resultante com "Filter > n = 1" 
-# para restar somente um ponto único por intersecção.
+# Como, novamente, precisamos somente de um dado único da altimetria, filtrar a 
+# camada resultante com "Filter > n = 1" para restar somente um ponto único por 
+# intersecção.
 # 
 # ------------------------------------------------------------------------------
 # 5. Juntar dados de elevação às linhas de quadra
@@ -150,32 +149,46 @@
 # Processing toolbox > Join attributes by nearest
 # Input layer: "Cleaned" (resultante do processo 1)
 # Input layer 2: "Joined layer" (resultante do processo 4)
-# Layer 2 fields to copy: selecionar as colunas "elev_mdt", "name" e "qgis_id" (criada na etapa 3)
+# Layer 2 fields to copy: selecionar coluna "elev_mdt"
 # Habilitar a opção "Discard records which could not be joined"
 # Maximum nearest neighbors: 1
 # Maximum distance: [Not set]
 # 
-# Resultado: camada "Joined layer". Para não confundir com a anterior, renomear 
-# para "Viário com elevação".
-# Haverá uma entrada para cada ligação deste trecho do viário com seus trechos 
-# vizinhos e duas ele com ele mesmo (uma para cada altimetria). Isso terá de ser 
-# tratado no R depois.
+# Resultado: camada "Joined layer", com mais do que o dobro de itens da camada 
+# original "Cleaned". Isso porque temos pelo menos 2 pontos associados a cada 
+# linha - há uns 350 casos com 3 pontos e outros 2 com 4 pontos. Isso terá de 
+# ser tratado no R depois.
+# 
+# Para não confundir com a anterior, renomear para "Viário com elevação".
 # 
 # ------------------------------------------------------------------------------
 # 6. Ajustar camada para exportação
 # Vamos simplificar esta camada e deixar só o essencial para exportação:
+#   
+# 1. Deixar somente as colunas "fid", "osm_id", "name", "length_m" e "elev_mdt". 
+# Remover as demais.
 # 
-# 1. Retirar as colunas de "cat", "distance", "feature_x", "feature_y", "nearest_x" e "nearest_y". 
+# 2. Atualizar o cálculo para "length_m" usando "Field calculator > Update 
+# existing field > length_m > Expression: $length"
 # 
-# 2. Vão ficar somente as colunas "fid", "osm_id", "name", "qgis_id", "qgis_id2", "elev_mdt" e "n". 
+# 3. Criar coluna de "qgis_id", complementar à "osm_id". Em:
+#   https://gis.stackexchange.com/questions/405041/adding-leading-zeros-to-string-value-in-qgis
 # 
-# 3. Criar cálculo para "length_m" usando "Field calculator > Update existing field > length_m > Expression: $length"
-# 
+# Field calculator > Create a new field
+# Output field name: qgis_id
+# Output field type: string
+# Output field length: 10
+# Fórmula: lpad("fid", 6, '0')
+# Fórmula alternativa [não usar]: lpad(@row_number, 6, '0')
 # 
 # Exportar como "viario_osm_com_elevacao_mdt_sem_z_por_quadra.gpkg" na pasta 
-# "yellow_dados > 03_curva_elevacao_sp" (retirar coluna de fid antes ao exportar).
+# "yellow_dados > 03_curva_elevacao_sp".
 # 
-# Tratar no R.
+# Tratar no R: a coluna "elev_mdt" vai ter que ser desmembrada em quatro, 
+# "elev_mdt1" (...) "elev_mdt4" com pivot_wider() para que fiquem duas colunas 
+# de altimetria e, junto com a distância, possa ser calculada a aclividade. Este 
+# valor poderá ser juntado aos segmentos de viário gerados no processo 1 via 
+# um id único formado pelo "osm_id + qgis_id"
 
 
 
@@ -196,7 +209,7 @@ elevacao_viario <- read_sf(elevacao_viario)
 
 
 # Guardar coluna de geometry para merge posterior
-geom_viario <- elevacao_viario %>% select(osm_id, qgis_id, qgis_id_2) %>% distinct()
+geom_viario <- elevacao_viario %>% select(osm_id, qgis_id) %>% distinct()
 
 
 # Criar dataframe para cálculo das declividades
@@ -207,77 +220,26 @@ declividades <-
   # redação dos n para virar elev_1, elev_2, elev_3 e elev_4
   mutate(n = sprintf('elev_%s', n)) %>% 
   # Puxar elevações para colunas
-  pivot_wider(id_cols = c(osm_id, qgis_id, qgis_id_2, name, name_2, length_m),
+  pivot_wider(id_cols = c(osm_id, qgis_id, name, length_m),
               names_from = 'n',
               values_from = 'elev_mdt')
 
-
-
-# Calcular declividades por arco do viário
-declividades_arcos <- 
+# Calcular as declividades por trecho de viário
+declividades <- 
   declividades %>% 
-  # Selecionar somente os próprios arcos, sem suas relações com os arcos vizinhos
-  filter(qgis_id == qgis_id_2) %>% 
   # Cálculos do mutate() devem considerar as linhas, por isso o rowwise()
   rowwise() %>%
   # Calcular elevações máximas e mínimas, extrair variação e calcular gradação
-  mutate(elev_min = across(starts_with('elev_')) %>% min(na.rm = TRUE),
-         elev_max = across(starts_with('elev_')) %>% max(na.rm = TRUE),
+  mutate(elev_max = max(c(elev_1, elev_2, elev_3, elev_4), na.rm = TRUE),
+         elev_min = min(c(elev_1, elev_2, elev_3, elev_4), na.rm = TRUE),
          elev_var = elev_max - elev_min,
-         # Calcular elev_grad (m): Δy / Δx
+         # Calcular aclividade (m): Δy / Δx
          # https://www.calculator.net/slope-calculator.html
-         elev_grad = elev_var / length_m,
+         aclividade = elev_var / length_m,
          # Calcular ângulo de inclinação (θ): arctan(Δy / Δx) - como a função
          # atan() traz o resultado em radianos, é preciso converter para graus
          # https://r-lang.com/how-to-convert-radians-to-degrees-in-r/
-         elev_ang_inc = atan(elev_grad) * 180 / pi) %>% 
-  # Simplificar dataframe
-  select(osm_id, qgis_id, qgis_id_2, name, name_2, length_m, 
-         elev_min, elev_max, elev_var, elev_grad, elev_ang_inc)
-
-# Exemplo de resultados
-# declividades_arcos %>% filter(qgis_id %in% c('000258', '000002', '000016'))
-
-
-# Deixar um dataframe simples para o left_join() que vem no bloco a seguir
-declividades_arcos2 <- declividades_arcos %>% select(osm_id, qgis_id, matches('^elev_'))
-
-# Calcular os gradientes de declividade por direção do arco
-declividades_direcionais <- 
-  declividades %>%
-  # Selecionar somente as relações dos arcos com seus arcos vizinhos
-  filter(qgis_id != qgis_id_2) %>% 
-  arrange(qgis_id, qgis_id_2) %>% 
-  # Cálculos do mutate() devem considerar as linhas, por isso o rowwise()
-  rowwise() %>%
-  # Isolar valor único de altimetria - este valor equivale ao ponto de interseção
-  # entre a ligação entre qgis_id e qgis_id_2
-  mutate(elev_val = across(starts_with('elev_')) %>% max(na.rm = TRUE)) %>% 
-  # Excluir colunas gerais de elevação
-  select(-matches('^elev_[0-9]')) %>% 
-  # Juntar dados de declividades no arco principal, calculados antes
-  left_join(declividades_arcos2, by = c('osm_id', 'qgis_id')) %>% 
-  # Ajustar sinais positivo/negativo para declividades conforme a direção - 
-  # quando elev_val é igual ao valor mínimo de elevação (elev_min), a direção 
-  # é de uma descida; caso contrário, é de uma subida. Isso influencia nos
-  # valores de elev_var, elev_grad e elev_ang_inc
-  mutate(elev_var = case_when(elev_val == elev_min ~ elev_var * -1,
-                              TRUE ~ elev_var),
-         elev_grad = case_when(elev_val == elev_min ~ elev_grad * -1,
-                               TRUE ~ elev_grad),
-         elev_ang_inc = case_when(elev_val == elev_min ~ elev_ang_inc * -1,
-                                  TRUE ~ elev_ang_inc))
-
-# Juntar os dois resultados em um dataframe único
-declividades <- 
-  declividades_arcos %>% 
-  # Criar coluna vazia elev_val, que será calculada somente para os direcionais
-  mutate(elev_val = 'NA', .after = 'length_m') %>%
-  # Juntar dataframe de resultados direcionais
-  rbind(declividades_direcionais) %>% 
-  # Remover rowwise() para conseguir ordenar os resultados
-  ungroup() %>% 
-  arrange(qgis_id, qgis_id_2)
+         angulo_inc = atan(aclividade) * 180 / pi)
 
 
 # declividades %>% select(length_m, aclividade, angulo_inc) %>% summary()
@@ -290,13 +252,7 @@ declividades <-
 # Max.   :9396.688   Max.   :2.143325   Max.   :64.9879 
 
 # Juntar novamente geometria do viário aos dados de declividades
-declividades_out <- 
-  declividades %>% 
-  left_join(geom_viario, by = c('osm_id', 'qgis_id', 'qgis_id_2')) %>% 
-  st_as_sf(crs = 31983)
-
-# Avaliar resultados
-# declividades_out %>% filter(qgis_id == qgis_id_2) %>% mapview(zcol = 'elev_grad')
+declividades_out <- declividades %>% left_join(geom_viario, by = c('osm_id', 'qgis_id'))
 
 # Guardar resultados
 out_file <- sprintf('%s/viario_osm_com_elevacao_mdt_sem_z_por_quadra_com_aclividades.gpkg', pasta_elevacao)

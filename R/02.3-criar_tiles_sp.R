@@ -10,8 +10,10 @@ pasta_valhalla_conf  <- sprintf("%s/conf", pasta_geral_tiles)
 pasta_valhalla_pbf   <- sprintf("%s/pbf", pasta_geral_tiles)
 pasta_valhalla_elev  <- sprintf("%s/elevation_tiles", pasta_geral_tiles)
 pasta_valhalla_tiles <- sprintf("%s/valhalla_tiles", pasta_geral_tiles)
+
+# out_pbf_file <- sprintf('%s/20220216_sao_paulo.osm.pbf', pasta_valhalla_pbf)
 # out_pbf_file <- sprintf('%s/20220216_sao_paulo_edited_20220915.osm.pbf', pasta_valhalla_pbf)
-out_pbf_file <- sprintf('%s/20220216_sao_paulo.osm.pbf', pasta_valhalla_pbf)
+out_pbf_file <- sprintf('%s/20220216_sao_paulo_edited_20221101.osm.pbf', pasta_valhalla_pbf)
 
 # ----------------------------------------
 # 1. Configurar tiles para SP com elevação
@@ -49,12 +51,14 @@ system2(command = valhalla_build_config_path,
 # Refazer os arquivos de admin areas:
 valhalla_build_admins_path <- sprintf("/usr/bin/valhalla_build_admins")
 arg_va1 <- sprintf('--config %s/valhalla.json %s', pasta_valhalla_conf, out_pbf_file)
+sprintf('%s %s', valhalla_build_admins_path, arg_va1)
 system2(command = valhalla_build_admins_path, args = c(arg_va1))
 
 
 # Refazer os arquivos de time zones:
 valhalla_build_timezones_path <- sprintf("/usr/bin/valhalla_build_timezones")
 arg_vtz1 <- sprintf(' > %s/timezones.sqlite', pasta_valhalla_tiles)
+sprintf('%s %s', valhalla_build_timezones_path, arg_vtz1)
 system2(command = valhalla_build_timezones_path, args = c(arg_vtz1))
 
 
@@ -62,12 +66,14 @@ system2(command = valhalla_build_timezones_path, args = c(arg_vtz1))
 # a pasta de 'elevation_tiles' que havia sido criada previamente:
 valhalla_build_tiles_path <- sprintf("/usr/bin/valhalla_build_tiles")
 arg_vt1 <- sprintf('-c %s/valhalla.json %s', pasta_valhalla_conf, out_pbf_file)
+sprintf('%s %s', valhalla_build_tiles_path, arg_vt1)
 system2(command = valhalla_build_tiles_path, args = c(arg_vt1))
 
 
 # Consolidar e compactar os arquivos dos tiles
 find_path <- sprintf("/usr/bin/find")
 arg_find <- sprintf('%s | sort -n | tar -cf "%s/valhalla_tiles.tar" --no-recursion -T -', pasta_valhalla_tiles, pasta_geral_tiles)
+sprintf('%s %s', find_path, arg_find)
 system2(command = find_path, args = c(arg_find))
 
 

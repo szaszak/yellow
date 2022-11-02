@@ -760,6 +760,7 @@ trace_route_valhalla_main <- function(trecho, sel_trip, active_mode = 'pedestria
   # ----------------------------------------------------------
   # Traçar rota com trace_route, retorna o response do POST
   r_tr <- trace_route_valhalla(trecho, active_mode = 'pedestrian') # pedestrian, bicycle
+  # print(active_mode)
   
   # Se roteamento for bem sucedido, calcular distância do trecho em metros
   if (http_status(r_tr)$message == 'Success: (200) OK') {
@@ -882,6 +883,8 @@ trace_attributes_valhalla_main <- function(trecho, sel_trip, active_mode = 'pede
 run_map_matching <- function(trecho, sel_trip, tempo_viagem, dist_min_viagem, active_mode,
                              pontos_elevacao, vias_ciclo, vias_restritas, semaforos) {
   # trecho <- viagem
+  # active_mode <- 'bicycle'
+  # active_mode <- 'pedestrian'
   
   # Faz o trace_route() da rota. Este processo é o que resulta na distância mais
   # próxima à calculada entre os pontos no QGIS e 
@@ -936,8 +939,8 @@ run_map_matching <- function(trecho, sel_trip, tempo_viagem, dist_min_viagem, ac
           # Quantidade de semátofos
           # ----------------------------------------------------------
           # Obter a quantidade de cruzamentos com semáforos ao longo da rota
-          qtd_semaforos <- semaforos %>% filter(st_intersects(shape_rota, semaforos, sparse = FALSE))
-          qtd_semaforos <- nrow(qtd_semaforos)
+          # qtd_semaforos <- semaforos %>% filter(st_intersects(shape_rota, semaforos, sparse = FALSE))
+          # qtd_semaforos <- nrow(qtd_semaforos)
           
           # ----------------------------------------------------------
           # Cálculos de distâncias via edges - infra cicloviária, parques
@@ -955,7 +958,7 @@ run_map_matching <- function(trecho, sel_trip, tempo_viagem, dist_min_viagem, ac
           shape_rota <- shape_rota %>% mutate(tempo = tempo_viagem,
                                               dist  = dist_rota,
                                               veloc = dist_rota / tempo_viagem * 3.6,
-                                              semaforos = qtd_semaforos,
+                                              # semaforos = qtd_semaforos,
                                               elev_pos = elev_geo_pos, 
                                               elev_neg = elev_geo_neg,
                                               .before = 'dist_edges')

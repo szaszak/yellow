@@ -18,6 +18,17 @@ rm(resultados1, resultados2, open_file1, open_file2)
 
 head(resultados)
 
+
+resultados %>% 
+  filter(veloc > 4 & veloc <= 30) %>% 
+  filter(prop_centr_100 < 33) %>% 
+  select(trip_id, cod_proc, 'tempo', 'dist', dist_edges, 'veloc', 'semaforos', 'elev_pos', 'elev_neg') %>% 
+  filter(dist_edges > dist) 
+  head()
+
+
+
+
 resultados %>% 
   select('tempo', 'dist', 'veloc', 'semaforos', 'elev_pos', 'elev_neg') %>% 
   summary()
