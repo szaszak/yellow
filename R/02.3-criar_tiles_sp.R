@@ -7,7 +7,8 @@
 #  estão fora da área. Tudo parece ok, mas o arquivo "duplicateways.txt", que
 #  deveria ser gerado na pasta "valhalla_tiles_sp" está sendo gerado na pasta R,
 #  de onde este script é rodado. Pode ser isso. Mudar o local base de onde ele
-#  roda para a pasta "valhalla_tiles_sp"
+#  roda para a pasta "valhalla_tiles_sp". Checar também se o arquivo tiles.tar
+#  não está caindo na pasta /home/livre
 # ------------------------------------------------------------------------------
 
 # carregar bibliotecas
@@ -22,7 +23,8 @@ pasta_valhalla_tiles <- sprintf("%s/valhalla_tiles", pasta_geral_tiles)
 
 # out_pbf_file <- sprintf('%s/20220216_sao_paulo.osm.pbf', pasta_valhalla_pbf)
 # out_pbf_file <- sprintf('%s/20220216_sao_paulo_edited_20220915.osm.pbf', pasta_valhalla_pbf)
-out_pbf_file <- sprintf('%s/20220216_sao_paulo_edited_20221101.osm.pbf', pasta_valhalla_pbf)
+# out_pbf_file <- sprintf('%s/20220216_sao_paulo_edited_20221101.osm.pbf', pasta_valhalla_pbf)
+out_pbf_file <- sprintf('%s/20220216_sao_paulo_edited_20221223.osm.pbf', pasta_valhalla_pbf)
 
 # ----------------------------------------
 # 1. Configurar tiles para SP com elevação

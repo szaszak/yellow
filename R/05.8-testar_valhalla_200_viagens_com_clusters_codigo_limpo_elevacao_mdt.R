@@ -12,7 +12,7 @@ pasta_dados        <- "../../yellow_dados"
 pasta_viagens_sp   <- sprintf("%s/01_viagens_em_sp", pasta_dados)
 pasta_osm_sp       <- sprintf("%s/02_osm_simplificado_sp", pasta_dados)
 pasta_elevacao     <- sprintf("%s/03_curva_elevacao_sp", pasta_dados)
-pasta_semaforos    <- sprintf("%s/04_semaforos_sp", pasta_dados)
+pasta_semaforos    <- sprintf("%s/04_atributos_viario", pasta_dados)
 # pasta_base   <- sprintf("%s/05_testes_20_viagens_clusters", pasta_dados)
 # pasta_base         <- sprintf("%s/05_testes_200_viagens_clusters", pasta_dados)
 pasta_base         <- sprintf("%s/06_testes_viagens_pre_modelo", pasta_dados)

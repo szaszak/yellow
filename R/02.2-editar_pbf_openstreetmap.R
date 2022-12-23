@@ -12,7 +12,7 @@ pasta_valhalla_pbf   <- sprintf("%s/pbf", pasta_geral_tiles)
 
 osm_file_orig <- sprintf('%s/20220216_sao_paulo.osm.pbf', pasta_valhalla_pbf)
 osm_file_tmp  <- sprintf('%s/lala.opl', pasta_valhalla_pbf)
-pbf_file_out  <- sprintf('%s/20220216_sao_paulo_edited_20221101.osm.pbf', pasta_valhalla_pbf)
+pbf_file_out  <- sprintf('%s/20220216_sao_paulo_edited_20221223.osm.pbf', pasta_valhalla_pbf)
 
 
 # Converter arquivo .pbf para o formato .opl, que pode ser lido como texto
@@ -75,6 +75,40 @@ objetos_a_editar2 <-
 #   select(tags)
 
 objetos_a_editar <- objetos_a_editar %>% rbind(objetos_a_editar2)
+
+
+# ------------------------------------------------------------------------------
+# Túnel 9 de Julho
+# ------------------------------------------------------------------------------
+
+# Túneis em que bicicletas e pedestres não são permitidos, mas que não são tipos
+# específicos, como de trem/metrô, passagens de água etc.
+objetos_a_editar3 <- 
+  osm %>% 
+  filter(
+    str_detect(tags, 'tunnel') & 
+      !str_detect(tags, 'electrified') & 
+      !str_detect(tags, 'waterway') &
+      !str_detect(tags, 'highway=trunk') &
+      !str_detect(tags, 'maxspeed=100') &
+      !str_detect(tags, 'access=private') &
+      !str_detect(tags, 'access=customers') &
+      # Este é o túnel da Rebouças com a Faria Lima
+      !str_detect(tags, 'name=Túnel%20%Jornalista%20%Fernando%20%Vieira%20%de%20%Melo') &
+      # Se é um túnel e é via de serviço ou de pedestres, é uma
+      # passagem de transporte público (conforme checagem manual)
+      !str_detect(tags, 'highway=service') &
+      !str_detect(tags, 'highway=footway') &
+      (str_detect(tags, 'foot=no') | str_detect(tags, 'bicycle=no'))
+    ) %>% 
+  select(obj_type)
+
+# Checar resultados
+# objetos_a_editar3 %>% mutate(obj_type = str_replace(obj_type, 'w', '')) %>% as.list()
+
+objetos_a_editar <- objetos_a_editar %>% rbind(objetos_a_editar3)
+
+
 
 # ------------------------------------------------------------------------------
 # Executar a edição

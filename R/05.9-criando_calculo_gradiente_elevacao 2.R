@@ -1,9 +1,8 @@
 # Inserir como parte da função obter_dados_edges() no script valhalla_map_matching.R
 
-
-
 # carregar bibliotecas
 source('fun/setup.R')
+source('fun/st_dbscan.R')
 
 # Estrutura de pastas
 pasta_dados        <- "../../yellow_dados"
