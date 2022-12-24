@@ -309,31 +309,26 @@ desenhar_centroide <- function(trecho, tam_raio = 100) {
 # Salvar arquivos resultantes
 # ----------------------------------------------------------
 salvar_resultados_map_matching <- function(viagem, sel_trip, cp_a, shape_rota,
-                                           pasta_viagens_csv, pasta_viagens_log,
-                                           pasta_viagens_gpkg, pasta_viagens_pngs,
-                                           salvar_gpkgs, salvar_pngs) {
+                                           pasta_viagens_gpkg, pasta_viagens_pngs, 
+                                           pasta_viagens_csv1, pasta_viagens_csv2) {
   
   # Em formato shapefile .gpkg
-  if (salvar_gpkgs) {
-    out_file0 <- sprintf('%s/%s_%s.gpkg', pasta_viagens_gpkg, sel_trip, cp_a)
-    st_write(shape_rota, out_file0, driver = 'GPKG', append = FALSE, quiet = TRUE)
-  }
+  out_file1 <- sprintf('%s/%s_%s.gpkg', pasta_viagens_gpkg, sel_trip, cp_a)
+  st_write(shape_rota, out_file1, driver = 'GPKG', append = FALSE, quiet = TRUE)
   
   # Salvar imagem da rota, para conferência
-  if (salvar_pngs) {
-    png(sprintf('%s/%s_%s.png', pasta_viagens_pngs, sel_trip, cp_a))
-    plot(shape_rota$geometry)
-    dev.off()
-  }
+  png(sprintf('%s/%s_%s.png', pasta_viagens_pngs, sel_trip, cp_a))
+  plot(shape_rota$geometry)
+  dev.off()
   
   # Em dataframe .csv1 - trecho resumido processado, referente ao shape da rota
-  out_file1 <- sprintf('%s/%s_%s.csv', pasta_viagens_log, sel_trip, cp_a)
+  out_file2 <- sprintf('%s/%s_%s.csv', pasta_viagens_csv1, sel_trip, cp_a)
   shape_rota <- shape_rota %>% st_drop_geometry()
-  write_delim(shape_rota, out_file1, delim = ';')
+  write_delim(shape_rota, out_file2, delim = ';')
   
   # Em dataframe .csv2 - trecho processado, com todos os pontos e atributos
-  out_file2 <- sprintf('%s/%s_%s.csv', pasta_viagens_csv, sel_trip, cp_a)
-  write_delim(viagem, out_file2, delim = ';')
+  out_file3 <- sprintf('%s/%s_%s.csv', pasta_viagens_csv2, sel_trip, cp_a)
+  write_delim(viagem, out_file3, delim = ';')
   
 }
 

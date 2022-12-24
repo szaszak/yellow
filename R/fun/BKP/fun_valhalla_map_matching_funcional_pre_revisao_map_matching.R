@@ -880,7 +880,8 @@ trace_attributes_valhalla_main <- function(trecho, sel_trip, active_mode = 'pede
 
 # Executar os map matchings com trace_route() e trace_attributes() e retornar 
 # lista com código de processamento e rota com atributos resultantes
-run_map_matching <- function(trecho, sel_trip, tempo_viagem, dist_min_viagem, active_mode) {
+run_map_matching <- function(trecho, sel_trip, tempo_viagem, dist_min_viagem, active_mode,
+                             pontos_elevacao, vias_ciclo, vias_restritas, semaforos) {
   # trecho <- viagem
   # active_mode <- 'bicycle'
   # active_mode <- 'pedestrian'
@@ -907,7 +908,67 @@ run_map_matching <- function(trecho, sel_trip, tempo_viagem, dist_min_viagem, ac
     trecho <- trace_attributes_results[[2]]
     
     # Se trace_attributes() foi bem sucedido, inserir demais atributos da rota
-    if (cp_j != '0') {
+    if (cp_j == '0') {
+      # ----------------------------------------------------------
+      # Inserir dados de elevação
+      # ----------------------------------------------------------
+      # Inserir dados de elevação - Geosampa
+      trecho <- get_elevation(trecho, pontos_elevacao)
+      
+
+       # Checar se a inserção dos dados de elevação foi bem sucedida; se não, descartar
+       if ('ISOVALOR' %in% names(trecho)) {
+       
+          # Calcular variações positivas e negativas de elevação com base no geosampa
+          elev_var     <- trecho %>% select(isovalor_var)
+          elev_geo_pos <- elev_var %>% filter(isovalor_var > 0) %>% sum()
+          elev_geo_neg <- elev_var %>% filter(isovalor_var < 0) %>% sum()
+          
+          # ----------------------------------------------------------
+          # Inserir dados de infracicloviária e áreas restritas
+          # ----------------------------------------------------------
+          # Juntar dados relativos a vias com infraestrutura cicloviária
+          trecho <- trecho %>% left_join(vias_ciclo, by = c('edges.way_id' = 'osm_id'))
+          
+          # Juntar dados se trecho está dentro de áreas restritas, tais como parques
+          trecho <- trecho %>% mutate(area_restrita = 
+                                        case_when(!edges.way_id %in% vias_restritas$osm_id ~ FALSE,
+                                                  TRUE ~ TRUE))
+          
+          # ----------------------------------------------------------
+          # Quantidade de semátofos
+          # ----------------------------------------------------------
+          # Obter a quantidade de cruzamentos com semáforos ao longo da rota
+          # qtd_semaforos <- semaforos %>% filter(st_intersects(shape_rota, semaforos, sparse = FALSE))
+          # qtd_semaforos <- nrow(qtd_semaforos)
+          
+          # ----------------------------------------------------------
+          # Cálculos de distâncias via edges - infra cicloviária, parques
+          # ----------------------------------------------------------
+          # Obter distâncias com base nos edges (infra cicloviária, áreas restritas)
+          dados_edges <- obter_dados_edges(trecho)
+          
+          # ----------------------------------------------------------
+          # Gerar shape resumitivo da viagem toda
+          # ----------------------------------------------------------
+          # Inserir dados da distribuição dos trechos dos edges no shape de rota
+          shape_rota <- shape_rota %>% cbind(dados_edges)
+          
+          # Inserir dados
+          shape_rota <- shape_rota %>% mutate(tempo = tempo_viagem,
+                                              dist  = dist_rota,
+                                              veloc = dist_rota / tempo_viagem * 3.6,
+                                              # semaforos = qtd_semaforos,
+                                              elev_pos = elev_geo_pos, 
+                                              elev_neg = elev_geo_neg,
+                                              .before = 'dist_edges')
+
+       } else {
+         # Se dataframe 'viagem' não tem coluna 'ISOVALOR', registrar erro
+         cp_j <- '3'; trecho <- shape_rota <- NA
+       }
+
+    } else {
       # Se trace_attributes() não foi bem sucedido, não há shape e trecho pode ser nulo
       trecho <- shape_rota <- NA
     }
@@ -926,7 +987,7 @@ run_map_matching <- function(trecho, sel_trip, tempo_viagem, dist_min_viagem, ac
   cp_map_m <- sprintf('%s%s', cp_i, cp_j)
   
   
-  return(list(cp_map_m, trecho, shape_rota, dist_rota))
+  return(list(cp_map_m, trecho, shape_rota))
   
 }
 
@@ -991,9 +1052,9 @@ get_elevation <- function(trip_df, elev_df){
 processar_trecho <- function(viagem, sel_trip, cp_a, cp_viagem, qtd_quebras, qtd_iteracoes,
                              tempo_min_viagem, qtd_min_pontos, dist_min_viagem, 
                              active_mode = 'pedestrian',
-                             pasta_viagens_csv, pasta_viagens_log,
-                             pasta_viagens_gpkg, pasta_viagens_pngs,
-                             salvar_gpkgs, salvar_pngs) {
+                             pontos_elevacao, vias_ciclo, vias_restritas, semaforos,
+                             pasta_viagens_gpkg, pasta_viagens_pngs, 
+                             pasta_viagens_csv1, pasta_viagens_csv2) {
   
   # Viagem possui duração, quantidade de pontos e frequência de sinal mínimas?
   tempo_viagem <- get_elapsed_time(viagem)
@@ -1003,7 +1064,9 @@ processar_trecho <- function(viagem, sel_trip, cp_a, cp_viagem, qtd_quebras, qtd
   if (cp_trecho == '000') {
     # Fazer map matching e registrar resultados
     map_matching_results <- run_map_matching(viagem, sel_trip, tempo_viagem, 
-                                             dist_min_viagem, active_mode)
+                                             dist_min_viagem, active_mode,
+                                             pontos_elevacao, vias_ciclo, 
+                                             vias_restritas, semaforos)
     
     # Finalizar código de processamento, com resultado do map matching
     cp_mm <- map_matching_results[[1]]
@@ -1012,9 +1075,8 @@ processar_trecho <- function(viagem, sel_trip, cp_a, cp_viagem, qtd_quebras, qtd
     # Se map matching foi bem sucedido
     if (cp_mm == '00') {
       # Registrar shape da rota
-      viagem     <- map_matching_results[[2]]
+      viagem <- map_matching_results[[2]]
       shape_rota <- map_matching_results[[3]]
-      dist_rota  <- map_matching_results[[4]]
       # mapview(shape_rota)
       
       # Fazer ajustes e inserir dados finais para exportar
@@ -1027,11 +1089,8 @@ processar_trecho <- function(viagem, sel_trip, cp_a, cp_viagem, qtd_quebras, qtd
                n_points        = nrow(viagem),
                qtd_quebras     = qtd_quebras, 
                qtd_it_outliers = qtd_iteracoes,
-               prop_centr_100  = detectar_proporcao_centroide(viagem, tam_raio = 100),
-               tempo_total     = tempo_viagem,
-               dist_total      = dist_rota,
-               veloc_vg_kph    = dist_rota / tempo_viagem * 3.6,
-               # prop_centr_150 = detectar_proporcao_centroide(viagem, tam_raio = 150),
+               prop_centr_100 = detectar_proporcao_centroide(viagem, tam_raio = 100),
+               prop_centr_150 = detectar_proporcao_centroide(viagem, tam_raio = 150),
                .after = 'trip_id') %>% 
         # Incluir dados de início e final da viagem
         mutate(vg_inicio  = as.POSIXlt(min(viagem$timestamps), origin = '1970-01-01'),
@@ -1040,9 +1099,8 @@ processar_trecho <- function(viagem, sel_trip, cp_a, cp_viagem, qtd_quebras, qtd
       
       # Salvar resultados nos formatos .gpkg, .csv e .png
       salvar_resultados_map_matching(viagem, sel_trip, cp_a, shape_rota, 
-                                     pasta_viagens_csv, pasta_viagens_log,
                                      pasta_viagens_gpkg, pasta_viagens_pngs,
-                                     salvar_gpkgs, salvar_pngs) 
+                                     pasta_viagens_csv1, pasta_viagens_csv2) 
       
       # Registrar processamento da viagem no log
       write(sprintf('%s;%s;%s', sel_trip, cp_a, cod_proc), file = log_file, append = TRUE)

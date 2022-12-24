@@ -3,28 +3,34 @@
 
 
 # ------------------------------------------------------------------------------
-#  Atenção - tem algo errado neste script. Ao final, o Valhalla diz que as buscas
-#  estão fora da área. Tudo parece ok, mas o arquivo "duplicateways.txt", que
-#  deveria ser gerado na pasta "valhalla_tiles_sp" está sendo gerado na pasta R,
-#  de onde este script é rodado. Pode ser isso. Mudar o local base de onde ele
-#  roda para a pasta "valhalla_tiles_sp". Checar também se o arquivo tiles.tar
-#  não está caindo na pasta /home/livre
+#  Atenção - Este script muda de pasta para rodar senão, ao final, o Valhalla 
+#  diz que as buscas estão fora da área. Sem mudar de pasta o arquivo 
+#  "duplicateways.txt", é gerado na pasta R em vez de na pasta "valhalla_tiles_sp"
 # ------------------------------------------------------------------------------
 
 # carregar bibliotecas
 source('fun/setup.R')
 
+# Registrar pasta original do script
+pasta_orig <- getwd()
+
 # Estrutura de pastas
 pasta_geral_tiles    <- "/home/livre/Desktop/Base_GtsRegionais/GitLab/yellow_src/valhalla_tiles_sp"
+pasta_valhalla_pbf   <- sprintf("%s/pbf", pasta_geral_tiles) # Esta pasta já tem que existir
 pasta_valhalla_conf  <- sprintf("%s/conf", pasta_geral_tiles)
-pasta_valhalla_pbf   <- sprintf("%s/pbf", pasta_geral_tiles)
 pasta_valhalla_elev  <- sprintf("%s/elevation_tiles", pasta_geral_tiles)
 pasta_valhalla_tiles <- sprintf("%s/valhalla_tiles", pasta_geral_tiles)
+dir.create(pasta_valhalla_conf, recursive = TRUE, showWarnings = FALSE)
+dir.create(pasta_valhalla_elev, recursive = TRUE, showWarnings = FALSE)
+dir.create(pasta_valhalla_tiles, recursive = TRUE, showWarnings = FALSE)
 
-# out_pbf_file <- sprintf('%s/20220216_sao_paulo.osm.pbf', pasta_valhalla_pbf)
-# out_pbf_file <- sprintf('%s/20220216_sao_paulo_edited_20220915.osm.pbf', pasta_valhalla_pbf)
-# out_pbf_file <- sprintf('%s/20220216_sao_paulo_edited_20221101.osm.pbf', pasta_valhalla_pbf)
-out_pbf_file <- sprintf('%s/20220216_sao_paulo_edited_20221223.osm.pbf', pasta_valhalla_pbf)
+# pbf_file <- sprintf('%s/20220216_sao_paulo.osm.pbf', pasta_valhalla_pbf)
+# pbf_file <- sprintf('%s/20220216_sao_paulo_edited_20220915.osm.pbf', pasta_valhalla_pbf)
+# pbf_file <- sprintf('%s/20220216_sao_paulo_edited_20221101.osm.pbf', pasta_valhalla_pbf)
+pbf_file <- sprintf('%s/20220216_sao_paulo_edited_20221223.osm.pbf', pasta_valhalla_pbf)
+
+# Entrar na pasta geral dos tiles a serem gerados/atualizados
+setwd(pasta_geral_tiles)
 
 # ----------------------------------------
 # 1. Configurar tiles para SP com elevação
@@ -61,7 +67,7 @@ system2(command = valhalla_build_config_path,
 
 # Refazer os arquivos de admin areas:
 valhalla_build_admins_path <- sprintf("/usr/bin/valhalla_build_admins")
-arg_va1 <- sprintf('--config %s/valhalla.json %s', pasta_valhalla_conf, out_pbf_file)
+arg_va1 <- sprintf('--config %s/valhalla.json %s', pasta_valhalla_conf, pbf_file)
 sprintf('%s %s', valhalla_build_admins_path, arg_va1)
 system2(command = valhalla_build_admins_path, args = c(arg_va1))
 
@@ -76,18 +82,20 @@ system2(command = valhalla_build_timezones_path, args = c(arg_vtz1))
 # Refazer os arquivos de tiles, agora com elevação - ATENÇÃO: ele vai usar
 # a pasta de 'elevation_tiles' que havia sido criada previamente:
 valhalla_build_tiles_path <- sprintf("/usr/bin/valhalla_build_tiles")
-arg_vt1 <- sprintf('-c %s/valhalla.json %s', pasta_valhalla_conf, out_pbf_file)
+arg_vt1 <- sprintf('-c %s/valhalla.json %s', pasta_valhalla_conf, pbf_file)
 sprintf('%s %s', valhalla_build_tiles_path, arg_vt1)
 system2(command = valhalla_build_tiles_path, args = c(arg_vt1))
 
 
 # Consolidar e compactar os arquivos dos tiles
 find_path <- sprintf("/usr/bin/find")
-arg_find <- sprintf('%s | sort -n | tar -cf "%s/valhalla_tiles.tar" --no-recursion -T -', pasta_valhalla_tiles, pasta_geral_tiles)
+arg_find <- sprintf('"valhalla_tiles" | sort -n | tar -cf "%s/valhalla_tiles.tar" --no-recursion -T -', pasta_geral_tiles)
 sprintf('%s %s', find_path, arg_find)
 system2(command = find_path, args = c(arg_find))
 
 
+# Voltar para a pasta original
+setwd(pasta_orig)
 
 # ----------------------------------------
 # 2. Testar o funcionamento do Valhalla
@@ -128,6 +136,15 @@ system2(command = curl_path, args = c(arg_c1, arg_c2, arg_c3, arg_c4, arg_c5, ar
 killall_path <- sprintf("/usr/bin/killall")
 arg_k1 <- 'valhalla_service'
 system2(command = killall_path, args = c(arg_k1))
+
+# Testar rota no Valhalla - copiar e colar no terminal
+# curl http://localhost:8002/route \
+# --data '{"locations":[
+#               {"lat":-23.60657,"lon":-46.69673},
+#               {"lat":-23.60695,"lon":-46.69648}
+#            ],
+#          "costing":"auto"
+#         }' | jq '.'
 
 # E em outro terminal - o resultado deve ser um JSON curto com as altitudes:
 # curl -X POST \
