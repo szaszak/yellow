@@ -32,13 +32,65 @@ head(curv)
 # -----------------------------------------------------------------------------
 
 # Arquivo com quantidade de lotes por trecho de viário (qgis_id)
-open_file3 <- sprintf('%s/A3_listagem_lotes_por_trecho_de_viario.csv', pasta_atrib_viario)
-lotes      <- read_delim(open_file3, delim = ';', col_types = "cc")
+open_file3A <- sprintf('%s/A3_A_listagem_lotes_por_trecho_de_viario.csv', pasta_atrib_viario)
+lotesA      <- read_delim(open_file3A, delim = ';', col_types = "cc")
 
 # Agrupar quantidade de lotes por qgis_id
-lotes <- lotes %>% group_by(qgis_id) %>% summarise(lotes = n())
-head(lotes)
+lotesA <- lotesA %>% group_by(qgis_id) %>% summarise(lotes_tot = n())
 
+# Agregar - qtd de lotes para cada 100 metros
+lotesA <- 
+  lotesA %>% 
+  left_join(subset(elev, select = c(qgis_id, length_m)), by = 'qgis_id') %>% 
+  mutate(dens_lotes_100m = lotes_tot / length_m * 100) %>% 
+  select(-length_m)
+
+head(lotesA)
+
+
+
+# Arquivo com quantidade de lotes por trecho de viário (qgis_id) - a 15m de interseções
+open_file3B <- sprintf('%s/A3_B_listagem_lotes_por_trecho_de_viario_15m.csv', pasta_atrib_viario)
+lotesB      <- read_delim(open_file3B, delim = ';', col_types = "cdc")
+
+# Agrupar quantidade de lotes por qgis_id
+lotesB <- lotesB %>% group_by(qgis_id, length_m_15m) %>% summarise(lotes_15m = n())
+
+# Agregar - qtd de lotes para cada 100 metros
+lotesB <- lotesB %>% mutate(dens_lotes_100m_15m = lotes_15m / length_m_15m * 100)
+
+# Reordernar colunas
+lotesB <- lotesB %>% select(qgis_id, lotes_15m, length_m_15m, dens_lotes_100m_15m)
+
+head(lotesB)
+
+
+# Arquivo com quantidade de lotes por trecho de viário (qgis_id) - a 15m de interseções
+open_file3C <- sprintf('%s/A3_C_listagem_lotes_por_trecho_de_viario_30m.csv', pasta_atrib_viario)
+lotesC      <- read_delim(open_file3C, delim = ';', col_types = "cdc")
+
+# Agrupar quantidade de lotes por qgis_id
+lotesC <- lotesC %>% group_by(qgis_id, length_m_30m) %>% summarise(lotes_30m = n())
+
+# Agregar - qtd de lotes para cada 100 metros
+lotesC <- lotesC %>% mutate(dens_lotes_100m_30m = lotes_30m / length_m_30m * 100)
+
+# Reordernar colunas
+lotesC <- lotesC %>% select(qgis_id, lotes_30m, length_m_30m, dens_lotes_100m_30m)
+
+head(lotesC)
+
+
+
+# Finalizar dataframe de lotes
+lotes <- 
+  lotesA %>% 
+  left_join(lotesB, by = 'qgis_id') %>% 
+  left_join(lotesC, by = 'qgis_id')
+
+
+head(lotes)
+rm(lotesA, lotesB, lotesC)
 
 # -----------------------------------------------------------------------------
 # Classificação viária
@@ -118,12 +170,13 @@ atrib_viario <-
   left_join(infra_ciclo, by = 'osm_id') %>%
   left_join(vias_restr, by = 'osm_id')
 
-# Substituir NAs por zeros na coluna de lotes
-atrib_viario <- atrib_viario %>% mutate(lotes = replace_na(lotes, 0))
+# Substituir NAs por zeros nas colunas de lotes
+atrib_viario <- atrib_viario %>% mutate(across(matches('lotes'), ~replace_na(.x, 0)))
+
 
 head(atrib_viario)
 
-
+# tail(atrib_viario)
 
 # Salvar arquivo .csv
 out_file <- sprintf('%s/00_listagem_viario_com_todos_atributos.csv', pasta_atrib_viario)

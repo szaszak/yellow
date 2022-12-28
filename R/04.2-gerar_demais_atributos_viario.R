@@ -71,9 +71,114 @@
 # - Selecionar somente as colunas qgis_id e lo_tp_lote
 # - Separador é ponto e vírgula
 # Exportar como:
-# 04_atributos_viario / A3_listagem_lotes_por_trecho_de_viario.csv
+# 04_atributos_viario / A3_A_listagem_lotes_por_trecho_de_viario.csv
 
 
+
+# ------------------------------------------------------------------------------
+# Quantidade de lotes por trecho de viário (qgis_id) a 15m das esquinas
+# ------------------------------------------------------------------------------
+
+# # Arquivos a serem usados:
+# 1. Todos os lotes do Geosampa (Geosampa > Cadastro > Lotes), unidos em uma única 
+# camada com Vector > Data Management Tools > Merge Layers, em SIRGAS:
+# Base_GtsRegionais/Arquivos_Geosampa/CADASTRO/LOTES/202201_SIRGAS_Geosampa_Lotes
+# 
+# 2. A camada de viário do OSM já com a subdivisão que contempla os QGIS_ID, em SIRGAS:
+# 02_osm_simplificado_sp / sao_paulo_osm_filtrado_com_qgis_id.gpkg
+
+
+# A. Retirar footway da camada de viário
+# sao_paulo_osm_filtrado_com_qgis_id.gpkg > Filter > "highway" != 'footway'
+
+
+# B. Gerar pontos de intersecção
+# 
+# Vector > Analysis Tools > Line intersections
+# Input layer: sao_paulo_osm_filtrado_com_qgis_id.gpkg (filtrado)
+# Intersect layer: sao_paulo_osm_filtrado_com_qgis_id.gpkg (filtrado)
+# 
+# Resultado: camada "Intersections".
+
+
+# C. Fazer buffer nas interseções (15m)
+# 
+# Vector > Geoprocessing Tools > Buffer
+# Input layer: Intersections
+# Distance: 15 metros
+# Segments: 5 (não mexer)
+# End cap style: Round
+# Join style: Round
+# Miter limit: 2 (não mexer)
+# 
+# Resultado: camada "Buffered". Renomear para "Buffered - Intersections 15m"
+
+
+# D. Retirar filtro da camada de viário
+# sao_paulo_osm_filtrado_com_qgis_id.gpkg > Filter > Clear
+
+
+# E. Fazer difference para isolar trechos de viário a 15m das interseções
+# 
+# Vector > Geoprocessing Tools > Difference
+# Input layer: sao_paulo_osm_filtrado_com_qgis_id.gpkg (sem filtro)
+# Overlay layer: "Buffered - Intersections 15m"
+# 
+# Resultado: camada "Difference". Renomear para "Difference 15m"
+
+
+# F. Criar nova extensão do trecho
+# "Difference 15m" > Field Calculator
+# Create a new field
+# Output field name: length_m_15m
+# Output field type: Decimal number (real)
+# Expression: $length
+
+
+# G. Fazer buffer na camada de viário com recorte de 15m das interseções
+# 
+# Vector > Geoprocessing Tools > Buffer
+# Input layer: "Difference 15m"
+# Distance: 12 metros
+# Segments: 5 (não mexer)
+# End cap style: Flat
+# Join style: Bevel
+# Miter limit: 2 (não mexer)
+# 
+# Resultado: camada "Buffered". Renomear para "Buffered - Difference 15m"
+
+
+
+# B. Fazer sobreposição do buffer com a camada de lotes
+# 
+# Na camada 202201_SIRGAS_Geosampa_Lotes, filtrar os tipos de lote. Na coluna "lo_tp_lote":
+#   F = "Fiscal" no Geosampa; -> escolher somente este
+#   M = "Espaço livre" no Geosampa;
+#   V = "Via de Acesso" no Geosampa
+# 
+# Em seguida:
+# Vector > Geoprocessing Tools > Intersection
+# Input layer: "Buffered - Difference 15m" (resultante da etapa anterior)
+# Overlay layer: 202201_SIRGAS_Geosampa_Lotes
+# Input fields to keep: qgis_id, length_m_15m
+# 
+# Resultado: camada "Intersection".
+# 
+# A quantidade de lotes por quadra é a quantidade de vezes (linhas) que um mesmo 
+# qgis_id se repete na camada Intersection.
+
+
+
+# Exportar como CSV:
+# - Selecionar somente as colunas qgis_id, length_m_15m e lo_tp_lote
+# - Separador é ponto e vírgula
+# Exportar como:
+# 04_atributos_viario / A3_B_listagem_lotes_por_trecho_de_viario_15m.csv
+
+
+# Repetir para 30 metros e exportar como
+# Exportar como:
+# 04_atributos_viario / A3_C_listagem_lotes_por_trecho_de_viario_30m.csv
 
 # ------------------------------------------------------------------------------
 # Tipologia de viário por trecho de viário (qgis_id)
@@ -130,3 +235,23 @@
 # foram copiados como:
 # 04_atributos_viario / A5_listagem_vias_infra_cicloviaria.csv
 # 04_atributos_viario / A6_listagem_vias_em_areas_restritas.csv
+
+
+
+# ------------------------------------------------------------------------------
+# Tags do OSM relacionadas ao viário
+# ------------------------------------------------------------------------------
+
+# Abrir arquivo .pbf no QGIS para extrair as tags de interesse:
+
+# Processing > Toolbox > Explode HStore Field
+# Input layer: 20220216_sao_paulo_edited_20221223.osm — lines
+# HStore field: "other_tags"
+# Expected list of fields separated by a comma [optional]: oneway,lanes,maxspeed,surface
+# (não pode ter espaço após a vírgula)
+
+# Exportar como CSV:
+# - Selecionar somente as colunas osm_id e as das tags extraídas acima
+# - Separador é ponto e vírgula
+# Exportar como:
+# 04_atributos_viario / A7_listagem_tags_osm_de_viario.csv
