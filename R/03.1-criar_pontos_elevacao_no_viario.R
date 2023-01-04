@@ -5,7 +5,8 @@
 # Criar pontos no viário a cada 2m
 # ------------------------------------------------------------------------------
 
-# A ideia é ter pontos ao longo das duas linhas (CET e OSM) para depois pegar o nearest neighbor de cada ponto. Para isso:
+# A ideia é ter pontos ao longo das duas linhas (CET e OSM) para depois pegar o 
+# nearest neighbor de cada ponto. Para isso:
 
 # Arquivos a serem usados:
 # 02_osm_simplificado_sp / sao_paulo_osm_filtrado_com_qgis_id.gpkg
@@ -21,8 +22,8 @@
 
 # Exportar para liberar memória RAM:
 # - Deixar como SIRGAS23S
-# - Selecionar somente as colunas osm_id, qgis_id, name e highway
-# - Descartar colunas fid, distance e angle
+# - Selecionar somente as colunas osm_id, qgis_id, distance e angle
+# - Descartar colunas fid, length_m, name e highway
 # Exportar como:
 # 03_curva_elevacao_sp / tmp_pontos_2m.gpkg
 
@@ -74,12 +75,12 @@
 
 # Ao exportar:
 # - Deixar como WGS84
-# - Selecionar somente as colunas fid, osm_id, qgis_id, elev_mdt
+# - Selecionar somente as colunas osm_id, qgis_id, distance e elev_mdt
 # - Remover o eixo Z em Geometry > Geometry type = Point (desabilitar "Include z-dimension")
 # Exportar como:
 # 03_curva_elevacao_sp / viario_osmid_qgisid_pontos_2m_draped.gpkg
 
-# Para filtrar somente um ponto a cada dois, na prática diminuindo a resolução de um 
+# [NÃO FAZER] Para filtrar somente um ponto a cada dois, na prática diminuindo a resolução de um 
 # ponto a cada 2m para um ponto a cada 4m, filtrar a camada e usar a expressão:
 # "fid" % 2 = 0 (linhas pares)
 # "fid" % 2 <> 0 (linhas ímpares)

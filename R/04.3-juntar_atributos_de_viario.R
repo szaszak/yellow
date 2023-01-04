@@ -11,10 +11,13 @@ pasta_atrib_viario <- sprintf("%s/04_atributos_viario", pasta_dados)
 
 # Arquivo com elevação por trecho de viário (qgis_id)
 open_file1 <- sprintf('%s/A1_listagem_elevacao_por_trecho_viario.csv', pasta_atrib_viario)
-elev  <- read_delim(open_file1, delim = ';', col_types = "ccdddddd")
+elev  <- read_delim(open_file1, delim = ';', col_types = "ccddddddddddd")
 
-# Isolar colunas de interesse
-elev <- elev %>% select(osm_id, qgis_id, length_m, elev_grad_abs)
+# Isolar colunas de interesse - aqui temos a coluna elev_grad que se refere
+# ao gradiente do viário no sentido do traçado da linha no QGIS. Ao associar
+# com os resultados do map matching, esse sentido terá de ser considerado para
+# avaliar se o sinal é o mesmo ou se será invertido
+elev <- elev %>% select(osm_id, qgis_id, length_m, elev_grad_sent_linha = elev_grad)
 head(elev)
 
 
@@ -98,7 +101,26 @@ rm(lotesA, lotesB, lotesC)
 
 # Arquivo classificação viária por trecho de viário (qgis_id)
 open_file4   <- sprintf('%s/A4_listagem_tipologia_de_viario_por_trecho.csv', pasta_atrib_viario)
-class_viaria <- read_delim(open_file4, delim = ';', col_types = "ccdc")
+class_viaria <- read_delim(open_file4, delim = ';', col_types = "ccci")
+
+
+# # Quais osm_id não possuem nenhuma classificação viária? - Após checagem manual
+# # desses ids no QGIS, a vasta maioria é de vias de serviço, dentro de parques,
+# # na USP, dentro de lotes etc. Podemos classificar geral como vias de serviço
+# cv_null <- class_viaria %>% filter(is.na(cvc_dctipo)) %>% select(osm_id) %>% distinct()
+# cv_non_null <- class_viaria %>% filter(!is.na(cvc_dctipo)) %>% select(osm_id) %>% distinct()
+# 
+# cv_null_null <- cv_null %>% filter(osm_id %nin% cv_non_null$osm_id) %>% distinct()
+# 
+# # Guardar resultados para serem atualizados em seguida como vias de serviço
+# class_viaria_null <- class_viaria %>% filter(osm_id %nin% cv_non_null$osm_id) %>% select(qgis_id) %>% distinct()
+# 
+# # Salvar arquivo .csv
+# out_file <- sprintf('%s/AX_listagem_viario_sem_tipologia_atribuida.csv', pasta_atrib_viario)
+# write_delim(cv_null_null, out_file, delim = ';')
+# 
+# rm(cv_null, cv_non_null, cv_null_null, out_file)
+
 
 # Agrupar por qgis_id e cvc_dctipo, somar quantidade de pontos associados a uma
 # classificação de viário e deixar somente a classificação com maior número de
@@ -119,6 +141,37 @@ class_viaria <-
   mutate(class_via = tolower(cvc_dctipo)) %>% 
   select(qgis_id, class_via)
 
+
+# # Quantos NA ainda temos no dataframe?
+# colSums(is.na(class_viaria)) # 34442
+# 
+# # Classificar os ids que estão sem atribuição como vias de serviço
+# class_viaria <- 
+#   class_viaria %>% 
+#   mutate(class_via = ifelse(qgis_id %in% class_viaria_null$qgis_id, 'serviço', class_via))
+# 
+# # Quantos NA ainda temos no dataframe?
+# colSums(is.na(class_viaria)) # 15965
+# 
+# # Salvar arquivo .csv
+# export <- class_viaria %>% filter(is.na(class_via)) %>% select(qgis_id) %>% distinct()
+# out_file <- sprintf('%s/AY_listagem_viario_sem_tipologia_atribuida2.csv', pasta_atrib_viario)
+# write_delim(export, out_file, delim = ';')
+
+
+# Após checagem geral, podemos atribuir todos os qgis_id que estão sem 
+# classificação viária atribuíada com o termo genérico "ped_serv", referente a
+# vias de serviço ou vias de pedestres. Alguns viários como a ciclovia Pinheiros
+# vão ficar com essa atribuição, e tudo bem - isso porque vamos depois definir
+# essa ciclovia como "expressa" e vai ser bom tê-la com outra classificação de
+# viário que não arterial ou coletora, já que ela é isolada dos veículos
+class_viaria <-
+  class_viaria %>%
+  mutate(class_via = ifelse(is.na(class_via), 'ped_serv', class_via))
+
+# Quantos NA ainda temos no dataframe?
+colSums(is.na(class_viaria))
+
 head(class_viaria)
 
 
@@ -133,6 +186,7 @@ infra_ciclo <- read_delim(open_file5, delim = ';', col_types = "cccc")
 # Isolar colunas de interesse
 infra_ciclo <- infra_ciclo %>% select(osm_id, infra_ciclo = tipo_2018)
 head(infra_ciclo)
+
 
 # infra_ciclo %>% select(infra_ciclo) %>% distinct()
 
@@ -159,7 +213,7 @@ head(vias_restr)
 
 
 # -----------------------------------------------------------------------------
-# Juntar tudo e exportar
+# Juntar tudo, substituir NAs que ficaram e exportar
 # -----------------------------------------------------------------------------
 
 atrib_viario <- 
@@ -170,12 +224,23 @@ atrib_viario <-
   left_join(infra_ciclo, by = 'osm_id') %>%
   left_join(vias_restr, by = 'osm_id')
 
+
 # Substituir NAs por zeros nas colunas de lotes
 atrib_viario <- atrib_viario %>% mutate(across(matches('lotes'), ~replace_na(.x, 0)))
 
+# Substituir NAs por zeros nas colunas de length_m de lotes
+atrib_viario <- atrib_viario %>% mutate(across(matches('length_m_'), ~replace_na(.x, 0)))
+
+# Substituir NAs nas colunas de infraestrutura cicloviária
+atrib_viario <- atrib_viario %>% mutate(infra_ciclo = ifelse(is.na(infra_ciclo), 'sem_infra_ciclo', infra_ciclo))
+
+# Substituir NAs nas colunas de vias restritas
+atrib_viario <- atrib_viario %>% mutate(via_restr = ifelse(is.na(via_restr), 'via_comum', via_restr))
+
+# Quantos NA ainda temos no dataframe?
+colSums(is.na(atrib_viario))
 
 head(atrib_viario)
-
 # tail(atrib_viario)
 
 # Salvar arquivo .csv

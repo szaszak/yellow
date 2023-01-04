@@ -20,11 +20,42 @@ head(base_modelo)
 # Preparações para modelos
 # ------------------------------------------------------------------------------
 
-base_modelo
+colSums(is.na(base_modelo))
 
 
 # Feriados vão ser considerados dias de descanso, junto com finais de semana
 dias_descanso <- c('sáb', 'dom', 'fer')
+
+base_modelo %>% select(class_via, infra_ciclo, edges.way_id) %>% filter(is.na(class_via)) %>% 
+  select(edges.way_id) %>% distinct() %>% pull()
+
+# Ajustar: onde é ciclovia expressa, não pode haver classificação viária
+base_modelo <- 
+  base_modelo %>% 
+  mutate(class_via = ifelse(infra_ciclo == 'expressa', 'ciclo_expressa', class_via))
+
+base_modelo %>%
+  mutate(
+    # Atualizar coluna de dia_semana para marcar feriados
+    dia_util    = ifelse(dia_semana %nin% dias_descanso, 'util', 'desc'),
+    # Categorizar picos da manhã, tarde e vale
+    cat_fx_hora = case_when(between(fx_hora, 5, 10) ~ 'pico_manha',
+                            between(fx_hora, 16, 21) ~ 'pico_tarde',
+                            between(fx_hora, 22, 4) ~ 'madrugada',
+                            TRUE ~ 'vale'),
+    # Juntar categorias de vias de serviço e vias de pedestres
+    class_via   = case_when(is.na(class_via) | class_via == 'vias de pedestres' ~ 'ped_serv',
+                            # class_via == 'vtr' | class_via == 'rodovia' ~ 'vtr_rodo',
+                            TRUE ~ class_via),
+    # class_via = ifelse(infra_ciclo == 'expressa', 'ciclo_expressa', class_via),
+    # Substituir NAs onde não há infraestrutura cicloviária
+    infra_ciclo = ifelse(is.na(infra_ciclo), 'sem_infra_ciclo', infra_ciclo),
+    # O que não for via em área de acesso restrito vai ser via comum
+    via_restr   = ifelse(is.na(via_restr), 'via_comum', 'via_restr'),
+    via_restr   = ifelse(infra_ciclo == 'expressa', 'ciclo_expressa', via_restr)
+  ) %>% 
+  select(-c(dia_semana, fx_hora))
+
 
 base_modelo_agreg <- 
   base_modelo %>%

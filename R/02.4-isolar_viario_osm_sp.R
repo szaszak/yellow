@@ -5,6 +5,9 @@
 # carregar bibliotecas
 source('fun/setup.R')
 
+# Nome do último arquivo .pbf modificado
+# 20220216_sao_paulo_edited_20221223.osm.pbf
+
 # Estrutura de pastas
 pasta_dados      <- "../../yellow_dados"
 pasta_valhalla      <- "../../yellow_src/valhalla_tiles_sp/pbf"
@@ -38,7 +41,7 @@ read_from_gpkg <- function(path) {
 
 # Abrir arquivo .pbf do OSM para a cidade de São Paulo
 # map_file <- sprintf("%s/20220216_sao_paulo.osm.pbf", pasta_valhalla)
-map_file <- list.files(pasta_valhalla, pattern = "sao_paulo.osm.pbf")[-1]
+map_file <- list.files(pasta_valhalla, pattern = "^\\d{8}_sao_paulo_edited_\\d{8}.osm.pbf")
 map_file     <- sprintf('%s/%s', pasta_valhalla, map_file)
 viario_muni <- read_from_gpkg(map_file)
 
@@ -74,6 +77,9 @@ no_use <- c("raceway", "proposed", "construction", "elevator", "bus_stop",
 viario_muni_out <- viario_muni %>% filter(!highway %in% no_use)
 # Retirar também viários em que highway é nulo
 viario_muni_out <- viario_muni_out %>% filter(!is.na(highway))
+
+# Ordenar por osm_id para exportar
+viario_muni_out <- viario_muni_out %>% arrange(osm_id)
 
 
 # Exportar a base resultante

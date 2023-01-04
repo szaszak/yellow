@@ -119,6 +119,7 @@
 
 
 # E. Fazer difference para isolar trechos de viário a 15m das interseções
+# [demora uns 10-12 minutos]
 # 
 # Vector > Geoprocessing Tools > Difference
 # Input layer: sao_paulo_osm_filtrado_com_qgis_id.gpkg (sem filtro)
@@ -149,7 +150,8 @@
 
 
 
-# B. Fazer sobreposição do buffer com a camada de lotes
+# H. Fazer sobreposição do buffer com a camada de lotes
+# [demora uns 10-12 minutos]
 # 
 # Na camada 202201_SIRGAS_Geosampa_Lotes, filtrar os tipos de lote. Na coluna "lo_tp_lote":
 #   F = "Fiscal" no Geosampa; -> escolher somente este
@@ -198,7 +200,7 @@
 #   
 # Processing Toolbox > Vector geometry > Points along geometry
 # Input Layer: camadas sao_paulo_osm_filtrado_com_qgis_id.gpkg e SIRGAS_SHP_classeviariacet_line.shp
-# Distance: 25 meters
+# Distance: 10 meters
 # Start offset: 0 (não mexer)
 # End offset: 0 (não mexer)
 # 
@@ -214,13 +216,18 @@
 # Input Layer 2: Interpolated points CET
 # Layer 2 fields to copy: cvc_dctipo
 # Maximum nearest neighbors: 1
-# Maximum distance: 15 meters (esta distância foi o melhor custo benefício, pois em alguns bairros o pessoal traçou calçadas e isso zoava a proximidade do vizinho com o atributo de viário)
+# Maximum distance: 15 meters (esta distância foi o melhor custo benefício, pois 
+# em alguns bairros o pessoal traçou calçadas e isso zoava a proximidade do 
+# vizinho com o atributo de viário)
 # 
-# Resultado: "Joined Layer". Filtrar o resultado pelo n = 1.
+# Resultado: "Joined Layer". Poderíamos filtrar o resultado pelo n = 1, porque
+# há vários casos em que há mais de 1 vizinho mais próximo. Porém, como vamos
+# agrupar depois pela quantidade de ids (o maior o número de ids define e 
+# classificação viária), talvez seja melhor deixar tudo.
 
 
 # Exportar como CSV:
-# - Selecionar somente as colunas qgis_id, cvc_dctipo e length_m
+# - Selecionar somente as colunas osm_id, qgis_id, cvc_dctipo e n
 # - Separador é ponto e vírgula
 # Exportar como:
 # 04_atributos_viario / A4_listagem_tipologia_de_viario_por_trecho.csv
