@@ -41,7 +41,7 @@ associar_atrib_viario <- function(resultados, pontos_viario, atrib_viario) {
   tmp_df <- data.frame()
   for (id in sel_osm_ids$edges.way_id) {
     # print(id)
-    # id <- sel_osm_ids$edges.way_id[2]
+    # id <- sel_osm_ids$edges.way_id[1]
     # id <- '933975898'
     
     # Filtrar somente linhas de resultados e altimetrias com o mesmo osm_id
@@ -56,7 +56,7 @@ associar_atrib_viario <- function(resultados, pontos_viario, atrib_viario) {
         tmp_pontos_viario %>% 
         slice(st_nearest_feature(tmp_resultados, tmp_pontos_viario)) %>% 
         st_drop_geometry() %>% 
-        select(qgis_id, elev_mdt) %>% 
+        select(qgis_id, distance, elev_mdt) %>% 
         # Adicionar a coluna de sq_order, que vai permitir reordenar o dataframe
         add_column(seq_order = tmp_resultados$seq_order)
       
@@ -64,7 +64,8 @@ associar_atrib_viario <- function(resultados, pontos_viario, atrib_viario) {
       # Na raríssima exceção em que essa associação não puder ser feita, criar
       # um placeholder com qgis_id e elev_mdt iguais a NA. Esse placeholder vai
       # ter o mesmo tamanho esperado devido à coluna seq_order
-      tmp_out <- data.frame(qgis_id = NA,
+      tmp_out <- data.frame(qgis_id  = NA,
+                            distance = NA,
                             elev_mdt = NA, 
                             seq_order = tmp_resultados$seq_order)
     }
@@ -81,10 +82,6 @@ associar_atrib_viario <- function(resultados, pontos_viario, atrib_viario) {
   resultados <- resultados %>% left_join(tmp_df, by = 'seq_order')
   # resultados %>% st_as_sf(coords = c('matched_points.lon', 'matched_points.lat'), crs = 4326) %>% mapview(zcol = 'qgis_id')
   
-  resultados %>% filter(is.na(qgis_id))
-  
-  # Inserir coluna com variação de elecação entre pontos
-  resultados <- resultados %>% mutate(altimetria_var = c(diff(elev_mdt), 0))
   
   # Finalmente, associar os atributos de viário à base
   resultados <- 
@@ -97,19 +94,21 @@ associar_atrib_viario <- function(resultados, pontos_viario, atrib_viario) {
 
 
 # -----------------------------------------------------------------------------
-# Consertar o sinal do gradiente
+# Consertar o sinal do gradiente - considerar sentido da linha do shape de viário
 # -----------------------------------------------------------------------------
 
-# O gradiente inserido até o momento ignora o sentido da via - ele foi definido
-# apenas como o ponto de altimetria mais próximo ao ponto GPS resultante do
-# processo de map matching. Este ponto poderia ser positivo ou negativo de forma
-# arbitrária. Precisamos endereçar isso
+# O gradiente inserido até o momento (elev_grad_sent_linha) considera o sentido
+# do desenho do viário no shapefile do OSM - para vias unidirecionais, este
+# sentido é o mesmo do fluxo de veículos. Já a coluna elev_mdt se refere ao 
+# ponto de altimetria mais próximo ao ponto GPS resultante do processo de map 
+# matching. É preciso agora avaliar o sinal de elevação (positivo/negativo) para
+# ver se está correto e, se não estiver, atualizá-lo
 
 
 consertar_sinal_declividade <- function(resultados) {
   
   # Usar o algoritmo do st_dbscan para reconhecer os clusters - especificamente,
-  # queremos linhas que tenham o mesmo osm_id e qgis_id e estejam a uma dist_totalância
+  # queremos linhas que tenham o mesmo osm_id e qgis_id e estejam a uma distância
   # de seq_order máxima de 1 entre um e outro. Isso porque se um mesmo bloco de
   # osm_id e qgis_id se repetem (ver viagem 027463_002 como exemplo), a nova
   # passagem por um trecho repetido pertence a outro cluster
@@ -146,25 +145,90 @@ consertar_sinal_declividade <- function(resultados) {
     left_join(n_clusters, by = 'cluster')
   
   
-  # Agrupar trechos conforme seus clusters e somar as variações de isovalor. O que
-  # queremos é saber se a variação será positiva ou negativa, para então aplicar
-  # este sinal à coluna de elev_grad
-  declividades_revisadas <- 
-    resultados %>% 
-    select(cluster, edges.way_id, qgis_id, elev_grad_abs, altimetria_var) %>% 
-    group_by(cluster, edges.way_id, qgis_id, elev_grad_abs) %>% 
-    summarise(alt_var_trecho = sum(altimetria_var)) %>%
-    mutate(elev_grad = ifelse(alt_var_trecho >= 0, elev_grad_abs, elev_grad_abs * -1),
-           elev_sent = ifelse(elev_grad >= 0, 'subida', 'descida')) %>% 
-    select(-c(elev_grad_abs, alt_var_trecho))
+  # Queremos agora descobrir se o deslocamento da pessoa é o mesmo do sentido
+  # da linha traçada no shapefile. A forma de descobrir isso é usando a coluna
+  # "distance", vinda do shape 
+  sentido_desloc <- 
+    resultados %>%
+    # select(cluster, edges.way_id, qgis_id, elev_grad_sent_linha, distance, elev_mdt, n_pontos) %>%
+    group_by(cluster, n_pontos, elev_grad_sent_linha) %>%
+    summarise(dist_inicial = first(distance),
+              dist_final   = last(distance),
+              elev_inicial = first(elev_mdt),
+              elev_final   = last(elev_mdt)) %>%
+    # Sentido é igual ao do desenho da linha quando distance final é maior do
+    # que distance inicial e oposto quando é o contrário. Porém, neste momento
+    # alguns sentidos ficarão indefinidos - é o caso de qgis-id que possuem
+    # somente 1 ponto ou nos quais os pontos estão sobrepostos, resultando em
+    # uma associação de todos os pontos ao mesmo distance
+    mutate(var_dist   = dist_final - dist_inicial,
+           linha_sent = case_when(var_dist > 0  ~ 'des_linha',
+                                  var_dist < 0  ~ 'opo_linha',
+                                  var_dist == 0 ~ 'indef')) %>% 
+    ungroup()
+  
+  # resultados %>% st_as_sf(coords = c('matched_points.lon', 'matched_points.lat'), crs = 4326) %>% mapview()
+  
+  # Para pontos de clusters que estão sem sentido definido, vamos avaliar a
+  # variação de altimetria dos pontos imediatamente anterior e posterior a ele
+  # para ver se estamos em uma subida ou em uma descida
+  sentido_desloc <- 
+    sentido_desloc %>% 
+    # Puxar altimetria dos pontos anterior e posterior e calcular variação
+    mutate(elev_pto_ant = shift(elev_final,   type = 'lag'),
+           elev_pto_pos = shift(elev_inicial, type = 'lead'),
+           var_elev = elev_pto_pos - elev_pto_ant) %>% 
+    # Classificar subida ou descida
+    mutate(elev_sent = case_when(var_elev < 0 ~ 'descida',
+                                  var_elev > 0 ~ 'subida',
+                                  TRUE ~ 'possivel_plano'))
+  
+  # Atualizar coluna de sentido da linha de acordo com o cálculo de diferenças
+  # entre as altimetrias
+  sentido_desloc <- 
+    sentido_desloc %>% 
+    select(c(cluster, n_pontos, elev_grad_sent_linha, linha_sent, elev_sent)) %>% 
+    mutate(linha_sent = case_when(
+      # Trechos de descida em que o gradiente é negativo estão seguindo o desenho da linha
+      linha_sent == 'indef' & elev_sent == 'descida' & elev_grad_sent_linha < 0 ~ 'des_linha',
+      # Trechos de descida em que o gradiente é positivo são contrários ao desenho da linha
+      linha_sent == 'indef' & elev_sent == 'descida' & elev_grad_sent_linha > 0 ~ 'opo_linha',
+      # Trechos de subida em que o gradiente é negativo são contrários ao desenho da linha
+      linha_sent == 'indef' & elev_sent == 'subida' & elev_grad_sent_linha < 0 ~ 'opo_linha',
+      # Trechos de subida em que o gradiente é positivo estão seguindo o desenho da linha
+      linha_sent == 'indef' & elev_sent == 'subida' & elev_grad_sent_linha > 0 ~ 'des_linha',
+      # Demais casos permaneceriam como indefinidos e muito provavelmente se referem
+      # a trechos de plano. Isso porque são um dos dois casos: 
+      # (1) pontos que estão a 1 ponto por trecho de viário (qgis_id) em que os 
+      # pontos anteriores e posteriores não apresentam variação de altimetria; ou
+      # (2) pontos estacionários ao início/fim de uma viagem (são clusters com mais
+      # de 1 ponto), que não foram associados a mais de 1 qgis_id e que já saíram
+      # para outro qgis_id ao se deslocar. Podemos deixá-los como idefinidos
+      TRUE ~ linha_sent))
+  
+  # Revisar os sinais dos gradientes de declividade
+  sentido_desloc <- 
+    sentido_desloc %>% 
+    # Deslocamentos no mesmo sentido do desenho da linha mantêm o sinal, senão 
+    # o sinal é invertido
+    mutate(elev_grad_rev = case_when(linha_sent == 'des_linha' ~ elev_grad_sent_linha,
+                                     linha_sent == 'opo_linha' ~ elev_grad_sent_linha * -1),
+           # Agora que temos certeza sobre o sentido da linha e o gradiente,
+           # atualizar a classificação na coluna elev_sent. Trechos sem 
+           # classificação vão ficar como NA
+           elev_sent = case_when(elev_grad_rev < 0 ~ 'descida',
+                                 elev_grad_rev > 0 ~ 'subida')) %>% 
+    # Selecionar colunas de interesse, mantendo o dado sobre se a viagem está ou
+    # não no sentido da via (para detectar contramão)
+    select(cluster, linha_sent, elev_sent, elev_grad_rev)
   
   
   # Agregar gradiente de declividade com sinal corrigido ao dataframe principal
   resultados <- 
     resultados %>% 
-    left_join(declividades_revisadas, by = c('edges.way_id', 'qgis_id', 'cluster'))
+    left_join(sentido_desloc, by = 'cluster')
   
-  # resultados %>% mapview(zcol = 'elev_grad')
+  # resultados %>% st_as_sf(coords = c('matched_points.lon', 'matched_points.lat'), crs = 4326) %>% mapview(zcol = 'elev_grad_rev')
   
   
 }
@@ -210,7 +274,7 @@ agregar_resultados <- function(resultados) {
   # Gerar um datafrane
   resultados <- 
     resultados %>% 
-    group_by(trip_id, edges.way_id, qgis_id, cluster, edges.length, elev_sent) %>% 
+    group_by(trip_id, edges.way_id, qgis_id, cluster, edges.length, linha_sent, elev_sent) %>% 
     summarise(n_pontos     = first(n_pontos),
               ts_inicio    = min(timestamps),
               tempo_trecho = max(timestamps) - min(timestamps),
@@ -223,7 +287,7 @@ agregar_resultados <- function(resultados) {
               # class_via    = first(class_via),
               # infra_ciclo  = first(infra_ciclo_2018),
               # via_restr    = first(via_restr),
-              elev_grad    = first(elev_grad)
+              elev_grad_rev = first(elev_grad_rev)
     ) %>% 
     mutate(speed_kph = edges.length / tempo_trecho * 3.6, .after = 'qgisid_ext_m') %>% 
     arrange(cluster) %>% 
@@ -252,7 +316,8 @@ agregar_resultados <- function(resultados) {
 # -----------------------------------------------------------------------------
 
 agrupar_para_modelos <- function(open_file) {
-  # this_name <- '090771_01.csv'
+  # this_name <- '000215_00.csv'
+  # this_name <- '027463_02.csv'
   # this_file <- arqs_a_processar %>% add_column(seq_order = 1:nrow(.)) %>% filter(csv_name == this_name) %>% select(seq_order) %>% pull()
   # open_file <- arqs_a_processar$csv_file[this_file]
   # open_file <- arqs_a_processar$csv_file[1]
@@ -323,7 +388,7 @@ agrupar_para_modelos <- function(open_file) {
 # -----------------------------------------------------------------------------
 
 # Dados a atualizar de acordo com o mês a rodar
-ano_mes <- '201812'
+ano_mes <- '201901'
 
 # Estrutura de pastas
 pasta_dados        <- "../../yellow_dados"
@@ -348,9 +413,10 @@ rm(sel_osm_id)
 
 # Abrir arquivo com os atributos de viário agregados
 atrib_viario <- sprintf('%s/00_listagem_viario_com_todos_atributos.csv', pasta_atrib_viario)
-atrib_viario <- read_delim(atrib_viario, delim = ';', col_types = 'ccdddididdiddccc')
-# Deixar somente colunas de interesse para esta etapa
-atrib_viario <- atrib_viario %>% select('osm_id', 'qgis_id', 'length_m', 'elev_grad_abs')
+atrib_viario <- read_delim(atrib_viario, delim = ';', col_types = 'ccdddididdiddccccici')
+# Deixar somente colunas de interesse para esta etapa - lembrando que aqui a 
+# coluna de elevação se refere ao sentido da linha traçada no shapefile do OSM
+atrib_viario <- atrib_viario %>% select('osm_id', 'qgis_id', 'length_m', 'elev_grad_sent_linha')
 
 
 # -----------------------------------------------------------------------------
@@ -425,6 +491,9 @@ arqs_a_processar %>% head()
 
 # Remover tidylog para todar base completa
 detach("package:tidylog")
+
+# Rodar para um arquivo de teste (pegar csv_name e usar dentro das funções)
+# arqs_a_processar %>% sample_n(1)
 
 # Rodar função para todos os arquivos- single thread
 lapply(arqs_a_processar$csv_file, agrupar_para_modelos)

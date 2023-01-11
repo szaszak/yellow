@@ -14,7 +14,7 @@ dir.create(pasta_base_modelo, recursive = TRUE, showWarnings = FALSE)
 
 # Abrir arquivo com os atributos de viário agregados
 atrib_viario <- sprintf('%s/00_listagem_viario_com_todos_atributos.csv', pasta_atrib_viario)
-atrib_viario <- read_delim(atrib_viario, delim = ';', col_types = 'ccdddididdiddccc')
+atrib_viario <- read_delim(atrib_viario, delim = ';', col_types = 'ccdddididdiddccccici')
 
 head(atrib_viario)
 
@@ -28,7 +28,7 @@ base_modelo <- list.files(path = pasta_base_agrup,
 # arq_trechos_proc <- sprintf('%s/trechos_processados_todos.csv', pasta_base_agrup)
 # base_modelo <- read_delim(arq_trechos_proc, delim = ';', col_types = 'cccicidddddddd')
 base_modelo <- 
-  lapply(X = base_modelo, FUN = read_delim, delim = ';', col_types = 'ccciicidddddddd') %>% 
+  lapply(X = base_modelo, FUN = read_delim, delim = ';', col_types = 'ccciiccidddddddd') %>% 
   rbindlist(fill = TRUE)
 
 head(base_modelo)
@@ -63,19 +63,20 @@ rm(ano_mes, arqs_dist_tot, search_folder, result_files)
 # Filtros referentes à base processada
 # ------------------------------------------------------------------------------
 
-# Retirar alguns qgis_id que estão dando problema
+# Retirar alguns qgis_id que estão dando problema - valores precisam ser re-checados
+# caso o mapa base OSM do processamento tenha sido alterado
 qgis_id_problematicos <- c(
-  '037565' # Pista da Raia da USP
+  '035959' # Pista da Raia da USP
 )
 
 trip_id_problematicos <- c(
-  '013918_12' # Túnel da 9 de Julho
+  # '013918_12' # Túnel da 9 de Julho
 )
 base_modelo <- base_modelo %>% filter(qgis_id %nin% qgis_id_problematicos & trip_id %nin% trip_id_problematicos)
 
 
-# Retirar arcos do viário (qgis_id) com quantidade de pontos menor do que 3
-base_modelo <- base_modelo %>% filter(n_pontos > 2) %>% select(-cluster)
+# # Retirar arcos do viário (qgis_id) com quantidade de pontos menor do que 3
+# base_modelo <- base_modelo %>% filter(n_pontos > 2) %>% select(-cluster)
 
 # Quantos trechos possuem pelo menos três viagens por sentido da via?
 viagens_por_trecho <- base_modelo %>% group_by(qgis_id, elev_sent) %>% tally()
@@ -85,6 +86,9 @@ head(viagens_validas)
 # Retirar da base do modelo os trechos com menos de uma viagem por sentido
 base_modelo <- base_modelo %>% filter(qgis_id %in% viagens_validas$qgis_id)
 rm(viagens_por_trecho, viagens_validas)
+
+# Retirar da base os trechos em que o sentido do deslocamento não foi identificado
+base_modelo <- base_modelo %>% filter(!is.na(elev_sent))
 
 head(base_modelo)
 
@@ -114,10 +118,10 @@ head(base_modelo)
 # Registros de quantidades de viagens e trechos
 # ------------------------------------------------------------------------------
 
-# Quantas viagens serão consideradas no modelo final? - 164.466
+# Quantas viagens serão consideradas no modelo final? - 164.585
 n_viagens <- base_modelo %>% select(vg_id) %>% distinct() %>% nrow()
 
-# Quantos trechos dessas viagens serão consideradas no modelo final? - 182.773
+# Quantos trechos dessas viagens serão consideradas no modelo final? - 182.912
 n_trechos <- base_modelo %>% select(trip_id) %>% distinct() %>% nrow()
 
 # Retirar coluna temporária de vg_id da base geral
@@ -131,11 +135,28 @@ base_modelo <- base_modelo %>% select(-vg_id)
 # Deixar somente colunas de interesse para esta etapa
 atrib_viario <- atrib_viario %>% select(qgis_id, curv_h, lotes_tot, lotes_15m, lotes_30m, 
                                         dens_lotes_100m, dens_lotes_100m_15m, dens_lotes_100m_30m,
-                                        class_via, infra_ciclo, via_restr)
+                                        class_via, infra_ciclo, via_restr,
+                                        osm_oneway, osm_lanes, osm_surface, osm_maxspeed)
 
 # Associar os atributos de viário restantes à base
 base_modelo <- base_modelo %>% left_join(atrib_viario, by = 'qgis_id')
 head(base_modelo)
+
+
+# Quantos qgis_id temos? # 26.987
+base_modelo %>% select(qgis_id) %>% distinct() %>% nrow()
+
+# Quantos trechos de via (qgis_id) estão sem info de sentido? # 0
+base_modelo %>% filter(is.na(osm_oneway)) %>% select(qgis_id) %>% distinct()
+
+# Quantos trechos de via (qgis_id) estão sem info de quantidade de faixas? # 12816/26987*100 = 47,5%
+base_modelo %>% filter(is.na(osm_lanes)) %>% select(qgis_id) %>% distinct() %>% nrow()
+
+# Quantos trechos de via (qgis_id) estão sem info de superfície? # 6661/26987*100 = 24,7%
+base_modelo %>% filter(is.na(osm_surface)) %>% select(qgis_id) %>% distinct() %>% nrow()
+
+# Quantos trechos de via (qgis_id) estão sem info de velocidade máxima? # 16633/26987*100 = 61,6%
+base_modelo %>% filter(is.na(osm_maxspeed)) %>% select(qgis_id) %>% distinct() %>% nrow()
 
 
 # ------------------------------------------------------------------------------

@@ -211,6 +211,22 @@ head(vias_restr)
 # vias_restr2 %>% filter(!osm_id %in% vias_restr$osm_id)
 
 
+# -----------------------------------------------------------------------------
+# Tags OSM
+# -----------------------------------------------------------------------------
+
+# Arquivo com listagem atributos do OSM referentes às vias (osm_id)
+open_file7 <- sprintf('%s/A7_listagem_tags_osm_de_viario.csv', pasta_atrib_viario)
+osm_tags <- read_delim(open_file7, delim = ';', col_types = "ccici")
+
+# Renomear colunas para ficar claro que são tags do OSM
+osm_tags <-  osm_tags %>% rename(osm_oneway = oneway,
+                                 osm_lanes  = lanes,
+                                 osm_surface  = surface,
+                                 osm_maxspeed = maxspeed)
+
+head(osm_tags)
+
 
 # -----------------------------------------------------------------------------
 # Juntar tudo, substituir NAs que ficaram e exportar
@@ -222,7 +238,8 @@ atrib_viario <-
   left_join(lotes, by = 'qgis_id') %>% 
   left_join(class_viaria, by = 'qgis_id') %>%
   left_join(infra_ciclo, by = 'osm_id') %>%
-  left_join(vias_restr, by = 'osm_id')
+  left_join(vias_restr, by = 'osm_id') %>% 
+  left_join(osm_tags, by = 'osm_id')
 
 
 # Substituir NAs por zeros nas colunas de lotes
@@ -236,6 +253,10 @@ atrib_viario <- atrib_viario %>% mutate(infra_ciclo = ifelse(is.na(infra_ciclo),
 
 # Substituir NAs nas colunas de vias restritas
 atrib_viario <- atrib_viario %>% mutate(via_restr = ifelse(is.na(via_restr), 'via_comum', via_restr))
+
+# Substituir NAs nas colunas de osm_oneway - assume-se que o que está como NA
+# corresponde a vias que não são se mão única
+atrib_viario <- atrib_viario %>% mutate(osm_oneway = ifelse(is.na(osm_oneway), 'no', osm_oneway))
 
 # Quantos NA ainda temos no dataframe?
 colSums(is.na(atrib_viario))
