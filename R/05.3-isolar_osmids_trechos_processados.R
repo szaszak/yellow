@@ -7,6 +7,9 @@ source('fun/setup.R')
 
 # Abre todos os arquivos de mapmatching processados e isola seus osm_ids (edges.way_id)
 isolar_osmids_processados <- function(ano_mes) {
+  # ano_mes <- '201811'
+  # ano_mes <- '201812'
+  # ano_mes <- '201901'
   # Abrir todos trechos processados - queremos selecionar somente os osm_id para
   # associação com o viário
   search_folder <- sprintf('%s/%s/viagens_processadas_csv', pasta_map_matching, ano_mes)
@@ -29,7 +32,7 @@ isolar_osmids_processados <- function(ano_mes) {
     # Nomes das colunas vieram junto - retirar essas linhas (todas repetidas)
     filter(trip_id != 'trip_id') %>% 
     # Retirar primeira coluna, com referência aos endereços do arquivo
-    select(edges.way_id) %>% 
+    select(edges.way_id) %>%
     distinct()
   
   # Definir arquivo de saída
@@ -48,3 +51,4 @@ pasta_map_matching <- sprintf("%s/05_map_matching", pasta_dados)
 meses_proc <- c('201811', '201812', '201901')
 
 lapply(meses_proc, isolar_osmids_processados)
+

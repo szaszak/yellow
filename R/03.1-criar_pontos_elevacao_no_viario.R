@@ -5,8 +5,8 @@
 # Criar pontos no viário a cada 2m
 # ------------------------------------------------------------------------------
 
-# A ideia é ter pontos ao longo das duas linhas (CET e OSM) para depois pegar o 
-# nearest neighbor de cada ponto. Para isso:
+# A ideia é ter pontos ao longo das linhas (OSM) para depois pegar o nearest 
+# neighbor de cada ponto. Para isso:
 
 # Arquivos a serem usados:
 # 02_osm_simplificado_sp / sao_paulo_osm_filtrado_com_qgis_id.gpkg

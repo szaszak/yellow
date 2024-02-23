@@ -62,7 +62,7 @@ yellow_sp <- read_rds(open_file) %>% rename(lat = lats,
 # Definir tempo mínimo de viagem, em segundos.Considerando uma média de 1 ponto 
 # a cada 5 segundos, temos: 18 pontos - 90 segundos - cerca de 300 metros a 12km/h.
 # Com isso, rotas curtas são:
-# 1. Com tempo menor do que 30s;
+# 1. Com tempo menor do que 90s;
 # 2. Com distância menor do que 300m;
 # 3. Com quantidade mínima de 18 pontos
 tempo_min_viagem <- 90
@@ -377,7 +377,11 @@ rotas_de_teste <-
   yellow_sp %>% 
   # Conversor online de timestamps: https://timestamp.online/
   # Viagens no dia 2018-11-01 00:00:00 a 2018-11-30 23:59:59
-  filter(timestamps >= 1541041200 & timestamps <= 1543629599 & n_points >= 18) %>%
+  # filter(timestamps >= 1541041200 & timestamps <= 1543629599 & n_points >= 18) %>%
+  # Viagens no dia 2018-12-01 00:00:00 a 2018-12-31 23:59:59
+  # filter(timestamps >= 1543629600 & timestamps <= 1546307999 & n_points >= 18) %>%
+  # Viagens no dia 2019-01-01 00:00:00 a 2019-01-31 23:59:59
+  filter(timestamps >= 1546308000 & timestamps <= 1548986399 & n_points >= 18) %>%
   select(trip_id) %>% 
   distinct() %>% 
   arrange(trip_id)

@@ -36,7 +36,7 @@ dir.create(pasta_valhalla_tiles, recursive = TRUE, showWarnings = FALSE)
 
 #  Para usar o osmosis, é preciso criar um polígono no formato .poly de são 
 #  paulo. O modo mais fácil é:
-#  1.. Abrir o mapa dos limites administrativos de SP do Geosampa no QGIS;
+#  1..Abrir o mapa dos limites administrativos de SP do Geosampa no QGIS;
 #  2. Instalar um plugin chamado "Export OSM Poly, que aparece como "osmpoly_export";
 #  3. No botão do plugin que aparece no menu, exportar a camada no formato .poly;
 #  4. Por conveniência, renomear o polígono "SAO PAULO.poly" para "SAO_PAULO.poly".

@@ -125,7 +125,7 @@ consertar_sinal_declividade <- function(resultados) {
               y    = resultados$qgis_id, 
               time = resultados$seq_order, 
               eps1 = 0,
-              eps2 = 1, # dist_totalância em seq_order tem de ser 1, se não
+              eps2 = 1, # distância em seq_order tem de ser 1
               minpts = 1, # cluster pode ter 1 ponto, sem problemas
               dry  = TRUE) %>% 
     as.data.frame() 
@@ -268,14 +268,15 @@ calcular_medianas_velocidades <- function(resultados, speed_col) {
 # Agregar dados para modelo
 # -----------------------------------------------------------------------------
 
-# Gerar dataframe final com resultados agregados para serem udados no modelo
+# Gerar dataframe final com resultados agregados por cluster para serem usados no modelo
 agregar_resultados <- function(resultados) {
   
   # Gerar um datafrane
   resultados <- 
     resultados %>% 
-    group_by(trip_id, edges.way_id, qgis_id, cluster, edges.length, linha_sent, elev_sent) %>% 
-    summarise(n_pontos     = first(n_pontos),
+    group_by(trip_id, edges.way_id, qgis_id, cluster, linha_sent, elev_sent) %>% 
+    summarise(edges.length = mean(edges.length),
+              n_pontos     = first(n_pontos),
               ts_inicio    = min(timestamps),
               tempo_trecho = max(timestamps) - min(timestamps),
               qgisid_ext_m = first(length_m),
@@ -316,8 +317,8 @@ agregar_resultados <- function(resultados) {
 # -----------------------------------------------------------------------------
 
 agrupar_para_modelos <- function(open_file) {
-  # this_name <- '000215_00.csv'
-  # this_name <- '027463_02.csv'
+  # this_name <- '092831_00.csv'
+  # this_name <- '034766_00.csv'
   # this_file <- arqs_a_processar %>% add_column(seq_order = 1:nrow(.)) %>% filter(csv_name == this_name) %>% select(seq_order) %>% pull()
   # open_file <- arqs_a_processar$csv_file[this_file]
   # open_file <- arqs_a_processar$csv_file[1]
@@ -371,7 +372,7 @@ agrupar_para_modelos <- function(open_file) {
   qgis_id_vazios <- resultados %>% filter(is.na(qgis_id)) %>% nrow()
   
   # Se houve problemas na associação, descartar rota e salvar dataframe vazio -
-  # os arquivos resultantes terão só o header e 159 bytes
+  # os arquivos resultantes terão só o header e 174 bytes (serão 29 arquivos)
   if (qgis_id_vazios > 0) { resultados <- resultados %>% slice(0) }
   
   # Salvar .csv
@@ -388,6 +389,8 @@ agrupar_para_modelos <- function(open_file) {
 # -----------------------------------------------------------------------------
 
 # Dados a atualizar de acordo com o mês a rodar
+ano_mes <- '201811'
+ano_mes <- '201812'
 ano_mes <- '201901'
 
 # Estrutura de pastas
@@ -413,43 +416,81 @@ rm(sel_osm_id)
 
 # Abrir arquivo com os atributos de viário agregados
 atrib_viario <- sprintf('%s/00_listagem_viario_com_todos_atributos.csv', pasta_atrib_viario)
-atrib_viario <- read_delim(atrib_viario, delim = ';', col_types = 'ccdddididdiddccccici')
+atrib_viario <- read_delim(atrib_viario, delim = ';', col_types = 'ccddcdididdiddccccccici')
 # Deixar somente colunas de interesse para esta etapa - lembrando que aqui a 
 # coluna de elevação se refere ao sentido da linha traçada no shapefile do OSM
 atrib_viario <- atrib_viario %>% select('osm_id', 'qgis_id', 'length_m', 'elev_grad_sent_linha')
 
 
-# -----------------------------------------------------------------------------
-# Isolar ids de viagens a serem processadas com base nos shapes de dist_total
-# -----------------------------------------------------------------------------
-
+# # -----------------------------------------------------------------------------
+# # Isolar ids de viagens a serem processadas com base nos shapes de dist_total
+# # -----------------------------------------------------------------------------
+# 
 # Abrir arquivo de resultados agregados (rota completa)
 open_file <- sprintf('%s/%s_map_matching_rotas_completas.csv', pasta_mes_mapmatch, ano_mes)
 res_agreg <- read_delim(open_file, delim = ';', col_types = 'cciiiddddTT')
-
-# head(res_agreg)
-# names(res_agreg)
-# hist(res_agreg$veloc_vg_kph, breaks = 1280, xlim = c(0, 30))
-# summary(res_agreg$veloc_vg_kph)
-
-
-# Aplicar filtros - trechos com velocidade média mínima e máxima
-res_agreg <- 
-  res_agreg %>% 
-  filter(veloc_vg_kph > 4 & veloc_vg_kph <= 30) %>% 
-  # filter(prop_centr_100 < 33) %>%
-  filter(prop_centr_100 < 50) %>% 
-  select(trip_id, cod_proc, tempo_total, dist_total, veloc_vg_kph)
-
-# hist(res_agreg$veloc_vg_kph, breaks = 1280, xlim = c(0, 30))
-# summary(res_agreg$veloc_vg_kph)
-
-
+# 
+# # res_agreg1 <- res_agreg
+# # res_agreg2 <- res_agreg
+# # res_agreg3 <- res_agreg
+# # res_agreg <- res_agreg1 %>% rbind(res_agreg2) %>% rbind(res_agreg3)
+# # head(res_agreg)
+# # 
+# # res_agreg %>% select(trip_id) %>% distinct()
+# # res_agreg %>% 
+# #   mutate(cod_proc = str_sub(cod_proc, 1, 2),
+# #          id_trecho = str_c(trip_id, cod_proc, sep = '_')) %>% 
+# #   select(id_trecho) %>% 
+# #   distinct() %>% 
+# #   nrow()
+# # 
+# # res_agreg %>% 
+# #   mutate(cod_proc = str_sub(cod_proc, 1, 2),
+# #          id_trecho = str_c(trip_id, cod_proc, sep = '_')) %>% 
+# #   select(id_trecho) %>% 
+# #   group_by(id_trecho) %>% 
+# #   tally() %>% 
+# #   filter( n > 1)
+# 
+# # 8 arquivos estão repetidos, provavelmente por inteseção entre as viradas de mês
+# # id_trecho     n
+# # <chr>     <int>
+# #   1 002306_01     2
+# # 2 035270_02     2
+# # 3 035270_03     2
+# # 4 056206_01     2
+# # 5 166687_01     2
+# # 6 198705_07     2
+# # 7 234584_00     2
+# # 8 323082_00     2
+# # 9 331740_01     2
+# # 10 379721_01     2
+# # 11 382736_09     2
+# 
+# # head(res_agreg)
+# # names(res_agreg)
+# # hist(res_agreg$veloc_vg_kph, breaks = 1280, xlim = c(0, 30))
+# # summary(res_agreg$veloc_vg_kph)
+# 
+# 
+# # Aplicar filtros - trechos com velocidade média mínima e máxima
+# # TODO - Documentar estes filtros
+# res_agreg <- 
+#   res_agreg %>% 
+#   filter(veloc_vg_kph > 4 & veloc_vg_kph <= 30) %>% 
+#   # filter(prop_centr_100 < 33) %>%
+#   filter(prop_centr_100 < 50) %>% 
+#   select(trip_id, cod_proc, tempo_total, dist_total, veloc_vg_kph)
+# 
+# # hist(res_agreg$veloc_vg_kph, breaks = 1280, xlim = c(0, 30))
+# # summary(res_agreg$veloc_vg_kph)
+# 
+# 
 # Construir base de ids a serem processados
-ids_a_processar <- 
-  res_agreg %>% 
+ids_a_processar <-
+  res_agreg %>%
   mutate(cod_proc = substr(cod_proc, 1, 2),
-         csv_name = str_c(trip_id, '_', cod_proc, '.csv', sep = '')) %>% 
+         csv_name = str_c(trip_id, '_', cod_proc, '.csv', sep = '')) %>%
   select(csv_name)
 
 # Limpar ambiente
