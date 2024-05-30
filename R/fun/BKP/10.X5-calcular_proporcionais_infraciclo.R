@@ -7,7 +7,7 @@ pasta_atrib_viario <- sprintf('%s/04_atributos_viario', pasta_dados)
 pasta_modelos      <- sprintf('%s/06_bases_para_modelo', pasta_dados)
 pasta_base_agrup   <- sprintf('%s/B_processados_agrupados', pasta_modelos)
 pasta_base_modelo  <- sprintf('%s/C_base_para_modelo', pasta_modelos)
-pasta_detours      <- sprintf('%s/10_detours', pasta_dados)
+pasta_detours      <- sprintf('%s/10_rotas_originais_vs_modeladas', pasta_dados)
 
 # ------------------------------------------------------------------------------
 # Abrir - viagens originais consideradas, map matching e atributos de viário
@@ -75,7 +75,7 @@ result_mm %>% select(trip_id) %>% distinct() %>% nrow()
 grupo_infraciclo <- 
   result_mm %>% 
   group_by(trip_id, infra_ciclo) %>% 
-  summarise(ext_perc_length_m = sum(length_m),
+  summarise(ext_perc_length_m  = sum(length_m),
             ext_perc_edges_len = sum(edges.length)) %>% 
   ungroup()
 

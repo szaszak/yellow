@@ -13,7 +13,7 @@ pasta_dados       <- "../../yellow_dados"
 pasta_graphhopper <- sprintf("%s/07_graphhopper", pasta_dados)
 pasta_gh_ttmatrix_2019  <- sprintf("%s/04_ttmatrix_rede_2019", pasta_graphhopper)
 pasta_gh_ttmatrix_2028  <- sprintf("%s/06_ttmatrix_rede_2028", pasta_graphhopper)
-pasta_rotas_ttmatrix   <- sprintf("%s/09_rotas_ttmatrix/01_trechos_agrupados", pasta_dados)
+pasta_rotas_ttmatrix   <- sprintf("%s/09_analise_rotas_modeladas_aop/01_trechos_agrupados", pasta_dados)
 dir.create(pasta_rotas_ttmatrix, recursive = TRUE, showWarnings = FALSE)
 
 

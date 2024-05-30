@@ -5,7 +5,7 @@ library('jsonlite')
 
 # Estrutura de pastas
 pasta_dados        <- "../../yellow_dados"
-pasta_detours      <- sprintf('%s/10_detours', pasta_dados)
+pasta_orig_vs_mod  <- sprintf('%s/10_rotas_originais_vs_modeladas', pasta_dados)
 
 
 # ------------------------------------------------------------------------------
@@ -22,7 +22,6 @@ gh_route <- function(url, out_file) {
   gh_response <- GET(url)
   
   # Encurtar url para guardar no dataframe de resultado
-  url <- 
     url %>% 
     str_replace('http:\\/\\/localhost:8989\\/route\\/\\?point=', '') %>% 
     str_replace('&point=', ';') %>%
@@ -104,7 +103,7 @@ juntar_ods <- function(df, out_file) {
 # ------------------------------------------------------------------------------
 
 # Abrir origens e destinos das rotas iniciais da Yellow
-ods_vgs <- sprintf('%s/02_origens_e_destinos_com_latlon.csv', pasta_detours)
+ods_vgs <- sprintf('%s/02_origens_e_destinos_com_latlon.csv', pasta_orig_vs_mod)
 ods_vgs <- read_delim(ods_vgs, delim = ';', col_types = cols(.default = "c"))
 head(ods_vgs)
 
@@ -119,8 +118,8 @@ ods_vgs <-
 head(ods_vgs)
 
 # # Testar routing com GraphHopper
-# out_file1 <- sprintf('%s/03_ttmatrix_teste_tmp.csv', pasta_detours)
-# out_file2 <- sprintf('%s/03_ttmatrix_teste.csv', pasta_detours)
+# out_file1 <- sprintf('%s/03_ttmatrix_teste_tmp.csv', pasta_orig_vs_mod)
+# out_file2 <- sprintf('%s/03_ttmatrix_teste.csv', pasta_orig_vs_mod)
 # df_part <- ods_vgs %>% slice(1:10)
 # lapply(df_part$url, gh_route, out_file1)
 # 
@@ -132,8 +131,8 @@ head(ods_vgs)
 
 # Criar ttmatrix a partir do GrahHopper - melhor rodar no Jupyter
 detach("package:tidylog")
-out_file1 <- sprintf('%s/03_ttmatrix_viagens_originais_tmp.csv', pasta_detours)
-out_file2 <- sprintf('%s/03_ttmatrix_viagens_originais.csv', pasta_detours)
+out_file1 <- sprintf('%s/03_ttmatrix_viagens_modeladas_a_partir_das_originais_tmp.csv', pasta_orig_vs_mod)
+out_file2 <- sprintf('%s/03_ttmatrix_viagens_modeladas_a_partir_das_originais.csv', pasta_orig_vs_mod)
 lapply(ods_vgs$url, gh_route, out_file1)
 
 ods_vgs <- juntar_ods(ods_vgs, out_file1)

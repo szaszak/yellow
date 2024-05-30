@@ -79,7 +79,7 @@ ciclo_ciclov_semsem <- read_delim(ciclo_ciclov_semsem, delim = ';', col_types = 
 # ------------------------------------------------------------------------------
 
 # Abrir shape com a marcação da rede cicloviária de referência
-ciclo_futura <- sprintf('%s/sao_paulo_osm_filtrado_com_qgis_id.gpkg', pasta_graphhopper)
+ciclo_futura <- sprintf('%s/sao_paulo_osm_filtrado_com_qgis_id_redes_cicloviarias_2019_2028.gpkg', pasta_graphhopper)
 ciclo_futura <- read_sf(ciclo_futura) %>% st_drop_geometry()
 # head(ciclo_futura)
 
@@ -105,7 +105,7 @@ ciclo_futura <- read_sf(ciclo_futura) %>% st_drop_geometry()
 # ciclo_ciclofx <- ciclo_ciclofx %>% rbind(ciclo_futura_ciclofx)
 
 # Limpar ambiente
-rm(ciclo_futura, ciclo_futura_comuns, ciclo_futura_ciclofx)
+# rm(ciclo_futura, ciclo_futura_comuns, ciclo_futura_ciclofx)
 
 
 # Como as ciclovias para a rede de referência estão super espalhadas pela cidade,

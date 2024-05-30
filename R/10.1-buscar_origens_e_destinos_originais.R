@@ -8,8 +8,8 @@ pasta_dados        <- "../../yellow_dados"
 pasta_modelos      <- sprintf('%s/06_bases_para_modelo', pasta_dados)
 pasta_trechos_proc <- sprintf("%s/A_trechos_processados", pasta_modelos)
 pasta_base_modelo  <- sprintf('%s/C_base_para_modelo', pasta_modelos)
-pasta_detours      <- sprintf('%s/10_detours', pasta_dados)
-dir.create(pasta_detours, recursive = TRUE, showWarnings = FALSE)
+pasta_orig_vs_mod  <- sprintf('%s/10_rotas_originais_vs_modeladas', pasta_dados)
+dir.create(pasta_orig_vs_mod, recursive = TRUE, showWarnings = FALSE)
 
 
 # ------------------------------------------------------------------------------
@@ -66,7 +66,7 @@ arqs_od <- arqs_od %>% distinct(trip_id, .keep_all = TRUE)
 
 
 # Gerar arquivo de saída, para ir abrigando os resultados
-out_file <- sprintf('%s/01_origens_e_destinos_viagens_consideradas.csv', pasta_detours)
+out_file <- sprintf('%s/01_origens_e_destinos_viagens_consideradas.csv', pasta_orig_vs_mod)
 
 # Abrir todos os arquivos de interesse e puxar somente origens e destinos
 detach("package:tidylog")

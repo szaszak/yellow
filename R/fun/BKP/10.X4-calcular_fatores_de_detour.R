@@ -6,7 +6,7 @@ library('geosphere')
 pasta_dados        <- "../../yellow_dados"
 pasta_modelos      <- sprintf('%s/06_bases_para_modelo', pasta_dados)
 pasta_base_modelo  <- sprintf('%s/C_base_para_modelo', pasta_modelos)
-pasta_detours      <- sprintf('%s/10_detours', pasta_dados)
+pasta_orig_vs_mod  <- sprintf('%s/10_rotas_originais_vs_modeladas', pasta_dados)
 
 
 # ------------------------------------------------------------------------------
@@ -15,7 +15,7 @@ pasta_detours      <- sprintf('%s/10_detours', pasta_dados)
 
 # Abrir viagens com latlon originais de origem e destino, já filtradas com
 # somente as viagens a serem consideradas
-ods_orig <- sprintf('%s/02_origens_e_destinos_com_latlon.csv', pasta_detours)
+ods_orig <- sprintf('%s/02_origens_e_destinos_com_latlon.csv', pasta_orig_vs_mod)
 ods_orig <- read_delim(ods_orig, delim = ';', col_types = 'cccdddd')
 
 # Calcular distância em linha reta entre os dois pontos
@@ -47,7 +47,7 @@ head(ods_orig)
 # ------------------------------------------------------------------------------
 
 # Abrir resultados com distâncias totais das viagens
-ods_vgs <- sprintf('%s/03_ttmatrix_viagens_originais.csv', pasta_detours)
+ods_vgs <- sprintf('%s/03_ttmatrix_viagens_modeladas_a_partir_das_originais.csv', pasta_orig_vs_mod)
 ods_vgs <- read_delim(ods_vgs, delim = ';', col_types = 'cccddddcc')
 ods_vgs <- ods_vgs %>% select(trip_id, dist_graphhopper = distance)
 head(ods_vgs)
@@ -139,7 +139,7 @@ sapply(ods_orig, sd)
 # 0.3396214 
 
 # Gravar resultados
-out_file <- sprintf('%s/04_viagens_com_distancias_e_detours.csv', pasta_detours)
+out_file <- sprintf('%s/04_viagens_modeladas_com_distancias_e_detours.csv', pasta_orig_vs_mod)
 write_delim(ods_orig, out_file, delim = ';')
 
 

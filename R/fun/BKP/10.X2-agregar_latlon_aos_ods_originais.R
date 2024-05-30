@@ -7,7 +7,7 @@ library('mapview')
 # Estrutura de pastas
 pasta_dados        <- "../../yellow_dados"
 pasta_viario_osm   <- sprintf("%s/02_osm_simplificado_sp", pasta_dados)
-pasta_detours      <- sprintf('%s/10_detours', pasta_dados)
+pasta_orig_vs_mod  <- sprintf('%s/10_rotas_originais_vs_modeladas', pasta_dados)
 
 
 # ------------------------------------------------------------------------------
@@ -15,7 +15,7 @@ pasta_detours      <- sprintf('%s/10_detours', pasta_dados)
 # ------------------------------------------------------------------------------
 
 # Abrir arquivo resultante da etapa anterior, com qgis_ids de origem e destino
-open_file <- sprintf('%s/01_origens_e_destinos_viagens_consideradas.csv', pasta_detours)
+open_file <- sprintf('%s/01_origens_e_destinos_viagens_consideradas.csv', pasta_orig_vs_mod)
 ods_vgs   <- read_delim(open_file, delim = ';', col_types = cols(.default = "c"))
 head(ods_vgs)
 
@@ -56,5 +56,5 @@ colSums(is.na(ods_vgs))
 
 
 # Gravar resultados
-out_file <- sprintf('%s/02_origens_e_destinos_com_latlon.csv', pasta_detours)
+out_file <- sprintf('%s/02_origens_e_destinos_com_latlon.csv', pasta_orig_vs_mod)
 write_delim(ods_vgs, out_file, delim = ';')

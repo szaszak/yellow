@@ -1,28 +1,23 @@
-# Antes de rodar esta parte, é preciso verificar como estão as estruturas
-# cicloviárias no PBF original, em especial, quais são os osm_ids das ciclovias,
-# ciclovias expressas (Marginal Pinheiros, Radial Leste e Parque Tietê) e das
-# vias com ciclofaixas, que serão marcadas aqui como uma rede local (lcn). Juntar
-# esses osm_ids em arquivos CSV próprios para serem usados aqui e garantir que
-# essas vias serão lidas com estrutura cicloviária - checar no QGIS se está tudo 
-# ok. Para simular redes futuras, é basicamente rodar o mesmo script, só que
-# atualizando os osm_ids para incluir as vias que teriam as estruturas
+# Simulação de LTS - Teste 1: Remover vias expressas sem estrutura cicloviária
+# do arquivo .pbf para rodar nova ttmatrix
 
-
-# carregar bibliotecas
-source('fun/setup.R')
+library('tidyverse')
+library('tidylog')
 
 
 # Estrutura de pastas
 pasta_dados        <- "../../yellow_dados"
 pasta_pbf_original <- "../../yellow_src/valhalla_tiles_sp/pbf"
 pasta_atrib_viario <- sprintf('%s/04_atributos_viario', pasta_dados)
-# pasta_map_matching <- sprintf("%s/05_map_matching", pasta_dados)
-# pasta_modelos      <- sprintf('%s/06_bases_para_modelo', pasta_dados)
-# pasta_base_agrup   <- sprintf('%s/B_processados_agrupados', pasta_modelos)
-# pasta_base_modelo  <- sprintf('%s/C_base_para_modelo', pasta_modelos)
 pasta_graphhopper  <- sprintf("%s/07_graphhopper", pasta_dados)
 pasta_gh_pbfs      <- sprintf("%s/03_PBFs_SP_rede_2019", pasta_graphhopper)
-dir.create(pasta_gh_pbfs, recursive = TRUE, showWarnings = FALSE)
+pasta_orig_modalt  <- sprintf("%s/11_rotas_modeladas_com_alternativas", pasta_dados)
+pasta_pbf_modalt   <- sprintf("%s/01_PBFs", pasta_orig_modalt)
+dir.create(pasta_pbf_modalt, recursive = TRUE, showWarnings = FALSE)
+
+# Arquivo PBF resultante da edição
+pbf_file_out <- '20220216_edit20240418_SP_infraciclo_2019_infraciclo_2019.osm.pbf'
+pbf_file_out  <- sprintf('%s/%s', pasta_pbf_modalt, pbf_file_out)
 
 
 # ------------------------------------------------------------------------------
@@ -32,6 +27,7 @@ dir.create(pasta_gh_pbfs, recursive = TRUE, showWarnings = FALSE)
 # Abrir arquivo com os atributos de viário agregados
 atrib_viario <- sprintf('%s/00_listagem_viario_com_todos_atributos.csv', pasta_atrib_viario)
 atrib_viario <- read_delim(atrib_viario, delim = ';', col_types = 'ccddcdididdiddccccccici')
+atrib_viario <- atrib_viario %>% distinct()
 
 # Abrir arquivo com osm_ids de ciclovias expressas em 2019 - a classificação que
 # está no dataframe de atributos do viário, acima, contém osm_ids das vias 
@@ -59,7 +55,7 @@ ciclo_ciclov_semsem <- read_delim(ciclo_ciclov_semsem, delim = ';', col_types = 
 
 # Arquivo .pbf a ser utilizado
 osm_file_orig <- sprintf("%s/20220216_sao_paulo_edited_20221223.osm.pbf", pasta_pbf_original)
-osm_file_tmp  <- sprintf('%s/lala.opl', pasta_gh_pbfs)
+osm_file_tmp  <- sprintf('%s/lala.opl', pasta_pbf_modalt)
 
 # Converter arquivo .pbf para o formato .opl, que pode ser lido como texto
 message('\nConvertendo arquivo .pbf em .opl com o osmium.\n')
@@ -73,8 +69,9 @@ system2(command = osmium_path, args = c(arg_o1, arg_o2, arg_o3))
 rm(arg_o1, arg_o2, arg_o3)
 
 
+# ------------------------------------------------------------------------------
 # Gerar arquivo osm base para edições
-# ----------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 
 # Abrir arquivo .opl para edição, sem linha de header
 osm <- read_delim(osm_file_tmp, delim = ' ', col_types = cols(.default = "c"), col_names = FALSE)
@@ -93,22 +90,23 @@ osm <- osm %>% select(obj_type     = X1,
 
 # Criar coluna temporária de index, para merge posterior
 osm <- osm %>% add_column(index_col = 1:nrow(osm))
+head(osm)
 
 # As tags com aspas duplas estão dando erro - remover as aspas
 # osm <- osm %>% mutate(tags = str_replace_all(tags, '"', ''))
 
-head(osm)
+gc(T)
 
 
+# ------------------------------------------------------------------------------
+# # Separar osm em dois (ways e não ways) e isolar links de viário para edição
+# ------------------------------------------------------------------------------
 
-# Separar dataframe osm em dois (ways e não ways) e começar edições
-# ----------------------------------------------------------------------------
-
-# Separar o dataframe osm em dois:
 # 1. Somente trechos de vias (w - ways)
 osm_edit <- osm %>% filter(str_starts(obj_type, 'w'))
 # 2. Somente nodes (n) e relações (r) - https://osmcode.org/opl-file-format/#encoding
 osm <- osm %>% filter(!str_starts(obj_type, 'w'))
+gc(T)
 
 
 # Criar coluna de osm_id no dataframe osm_edit
@@ -127,61 +125,15 @@ osm_edit <-
 
 # head(osm_edit)
 
-# osm_edit %>% select(tag_highway) %>% distinct() %>% arrange(tag_highway) %>% slice(21:33)
-# 1 bus_stop              
-# 2 construction          
-# 3 corridor              
-# 4 cycleway              
-# 5 elevator              
-# 6 emergency_access_point
-# 7 emergency_bay         
-# 8 footway               
-# 9 living_street         
-# 10 motorway              
-# 11 motorway_link         
-# 12 path                  
-# 13 pedestrian            
-# 14 platform              
-# 15 primary               
-# 16 primary_link          
-# 17 proposed              
-# 18 raceway               
-# 19 residential           
-# 20 rest_area  
-# 21 secondary     
-# 22 secondary_link
-# 23 service       
-# 24 services      
-# 25 steps         
-# 26 tertiary      
-# 27 tertiary_link 
-# 28 track         
-# 29 trunk         
-# 30 trunk_link    
-# 31 unclassified  
-# 32 yes           
-# 33 NA   
 
-# Puxar somente os links de viário que vamos considerar e editar - os demais vão
-# voltar ao dataframe principal
+# Puxar somente os links de viário que vamos considerar e mesmo editar
 tags_viario <- c('cycleway', 'footway', 'living_street', 
                  'motorway','motorway_link', 'path', 'pedestrian', 
                  'primary', 'primary_link', 'residential', 
                  'secondary', 'secondary_link', 'service', # 'steps',
                  'tertiary', 'tertiary_link', 'track', 
                  'trunk', 'trunk_link'#, 'unclassified'
-                 )
-
-# # Remover as linhas que não usaremos e juntá-las de volta ao dataframe principal
-# osm_edit_tmp <- osm_edit %>% filter(!tag_highway %in% tags_viario)
-# osm_edit_tmp <- osm_edit_tmp %>% select(-c(osm_id, tag_highway))
-# # head(osm_edit_tmp)
-# 
-# # Fazer a junção dos dataframes e remover o temporário
-# osm <- osm %>% rbind(osm_edit_tmp)
-# # Limpar ambiente
-# rm(osm_edit_tmp)
-
+)
 
 # Isolar somente as linhas de viário que serão editadas (terão as tags alteradas)
 osm_edit <- osm_edit %>% filter(tag_highway %in% tags_viario)
@@ -191,27 +143,9 @@ rm(tags_viario)
 # head(osm_edit)
 
 
-# # Por qualquer motivo, há 464 (0,32%) linhas de viário que não estão na listagem 
-# # de vias com atributos - vamos desconsiderá-las e jogá-las de volta no df principal
-# osm_edit_tmp <- osm_edit %>% filter(!osm_id %in% atrib_viario$osm_id)
-# osm_edit_tmp <- osm_edit_tmp %>% select(-c(osm_id, tag_highway))
-# # head(osm_edit_tmp)
-# 
-# # Fazer a junção dos dataframes
-# osm <- osm %>% rbind(osm_edit_tmp)
-# 
-# # Limpar ambiente
-# rm(osm_edit_tmp)
-
-# Isolar somente as linhas de viário que serão editadas (terão as tags alteradas)
-# e que estão na listagem de vias com os atributos
-osm_edit <- osm_edit %>% filter(osm_id %in% atrib_viario$osm_id)
-# head(osm_edit)
-
-
 
 # ------------------------------------------------------------------------------
-# Substituir tags de highway pela classificação viária da CET
+# Preparar base com classificação viária da CET
 # ------------------------------------------------------------------------------
 
 # Simplificar dataframe atrib_viario para conter somente classificação viária
@@ -239,7 +173,7 @@ class_viaria <- class_viaria %>% select(-ext)
 # # Juntar infraestrutura cicloviária
 # class_viaria <- class_viaria %>% left_join(infra_ciclo, by = 'osm_id') 
 
-head(class_viaria)
+# head(class_viaria)
 
 # class_viaria %>% select(class_via) %>% distinct()
 # 1 arterial         
@@ -249,7 +183,6 @@ head(class_viaria)
 # 5 rodovia          
 # 6 vias de pedestres
 # 7 vtr 
-
 
 # Atualizar classificações viárias de acordo com o que será usado no custom model
 # do graphhopper
@@ -263,17 +196,12 @@ class_viaria <-
                              class_via == 'rodovia'  ~ 'motorway',
                              class_via == 'vias de pedestres' ~ 'pedestrian',
                              class_via == 'vtr'      ~ 'trunk'
-                             )) %>% 
-  # # Agora, o que é ciclovia na coluna infra_ciclo vai ser atualizado para
-  # # highway cycleway
-  # mutate(new_tag = ifelse(infra_ciclo == 'ciclovia', 'cycleway', new_tag)) %>% 
-  select(-class_via) %>% 
+  )) %>% 
   distinct()
 
-head(class_viaria)
+# head(class_viaria)
 
 
-# ------------------------------------------------------------------------------
 # Garantir que vias de pedestres e serviço do OSM não vão ser sobrepostas pela CET
 # ------------------------------------------------------------------------------
 
@@ -294,8 +222,10 @@ class_viaria <-
   class_viaria %>% 
   mutate(new_tag = ifelse(osm_id %in% ped_serv_lines$osm_id, 'pedestrian', new_tag))
 
+# Limpar ambiente
+rm(tags_ped_serv, ped_serv_lines)
+# head(class_viaria)
 
-# ------------------------------------------------------------------------------
 # Garantir que ciclovias expressas vão ser lidas como cycleways
 # ------------------------------------------------------------------------------
 
@@ -306,7 +236,6 @@ class_viaria <-
   mutate(new_tag = ifelse(osm_id %in% ciclo_expressas$osm_id, 'cycleway', new_tag))
 
 
-# ------------------------------------------------------------------------------
 # Garantir que ciclovias comuns vão ser lidas como cycleways
 # ------------------------------------------------------------------------------
 
@@ -319,11 +248,13 @@ class_viaria <-
   mutate(new_tag = ifelse(osm_id %in% ciclo_comuns$osm_id, 'cycleway', new_tag))
 
 
-# Juntar a abertura da tag highway ao atributo atualizado
+# Juntar a abertura da tag highway ao atributo atualizado em 'new_tag'
 class_viaria <- 
   class_viaria %>% 
   mutate(tag1_highway = str_c('Thighway=', new_tag, sep = '')) %>% 
+  # Remover coluna temporária
   select(-new_tag)
+# head(class_viaria)
 
 # class_viaria %>% select(tag1_highway) %>% distinct()
 # 1 Thighway=cycleway   
@@ -336,11 +267,7 @@ class_viaria <-
 
 # Juntar a primeira tag, de highway, ao dataframe de vias a serem editadas
 osm_edit <- osm_edit %>% left_join(class_viaria, by = 'osm_id')
-
-head(osm_edit)
-
-# Limpar ambiente
-rm(class_viaria)
+# head(osm_edit)
 
 
 # ------------------------------------------------------------------------------
@@ -385,7 +312,7 @@ smoothness <-
                              smoothness == 'inicio_fim' ~   'very_bad',
                              smoothness == 'inicio' ~       'bad',
                              smoothness == 'sem_semaforos'~ 'intermediate'
-                             ))
+  ))
 
 
 # Isolar colunas de interesse
@@ -456,7 +383,7 @@ smoothness <-
 
 # Juntar a tag de smoothness ao dataframe de vias a serem editadas
 osm_edit <- osm_edit %>% left_join(smoothness, by = 'osm_id')
-
+# head(osm_edit)
 
 # osm_edit %>% filter(tag2_smoothness == ',smoothness=excellent') %>% select(tag_highway) %>% distinct()
 
@@ -495,6 +422,15 @@ osm_oneway <-
 
 # Corrigir as tags para ciclovias comuns e expressas - elas vão ter a tag de 
 # 'surface' retirada e a tag de 'oneway' atualizada sempre para 'no'
+# ATENÇÃO: ao remover as tags de 'surface' e 'oneway' (por exemplo) ciclovias 
+# comuns ficam menos atrativas do que vias comuns de mão única, o que é estranho. 
+# Por exemplo, a Paulista passa a ser despriorizada frente à Alameda Santos, 
+# mesmo com a ciclovia. Por este motivo, a velocidade das cycleways será ajustada
+# diretamente no arquivo JSON puxado pelo config-example.yml do GraphHopper. A
+# intenção é ter um certo equilíbrio de que as ciclovias passem a ser priorizadas
+# frente à própria via em que estão e em relação a eventuais paralelas próximas,
+# mas ao mesmo tempo evitar que a velocidade seja aumentada demais e de forma
+# desproporcional.
 osm_oneway <- 
   osm_oneway %>% 
   # Atualizar para ciclovias comuns
@@ -542,9 +478,48 @@ osm_edit <-
                            ',route=bicycle,network=lcn,lcn=yes,cycleway:right=lane,cycleway:right:oneway=no', 
                            ''))
 
+# # Criar uma coluna com as tags de permissão de bicicleta - queremos 
+# # especificamente a tag 'bicycle=no '
+# osm_edit <- 
+#   osm_edit %>% 
+#   # Isolar a tag de highway das demais (highway=motorway, highway=motorway_link,)
+#   mutate(tag_bike = str_extract(tags, 'bicycle=[a-zA-Z_]*[,]?'),
+#          # Remover o texto "highway=" e a vírgula usada como separador
+#          # tag_bike = str_replace(tag_bike, 'highway=', ''),
+#          tag_bike = str_replace(tag_bike, ',', ''),
+#          .before = 'tags')
+# 
+# # tag_bike            
+# # <chr>               
+# #   1 NA                  
+# # 2 bicycle=use_sidepath
+# # 3 bicycle=yes         
+# # 4 bicycle=designated  
+# # 5 bicycle=no          
+# # 6 bicycle=permissive  
+# # 7 bicycle=permit      
+# # 8 bicycle=private     
+# # 9 bicycle=dismount    
+# # 10 bicycle=destination 
+# # 11 bicycle=  
+# 
+# # Demarcar, de acordo com a info original do OSM, onde as bicicletas não podem
+# # circular (tag 'bicycle=no'). Isso deve retirar as bicicletas de vias expressas,
+# # rodovias, viadutos etc.
+# osm_edit <- 
+#   osm_edit %>% 
+#   mutate(tag4_lcn = ifelse(tag_bike != 'bicycle=no' | is.na(tag_bike) | str_detect(tag4_lcn, 'network=lcn') | str_detect(tag1_highway, 'Thighway=cycleway'),
+#                            tag4_lcn,
+#                            str_c(tag4_lcn, ',bicycle=no', sep = '')))
+# # head(osm_edit)
+# 
+# # Testar se deu certo nos diferentes cenários
+# # osm_edit %>% filter(is.na(tag_bike)) %>% sample_n(20) %>% select(tag_bike, tag4_lcn)
+# # osm_edit %>% filter(!is.na(tag_bike)) %>% sample_n(20) %>% select(tag_bike, tag4_lcn)
+# # osm_edit %>% filter(tag_bike == 'bicycle=no' & str_detect(tag4_lcn, 'network=lcn')) %>% select(tag4_lcn) %>% 
+# #   mutate(tag4_lcn = str_replace(tag4_lcn, 'route=bicycle,network=lcn,lcn=yes,cycleway:right=lane,', '')) %>% 
+# #   sample_n(20)
 
-# Limpar ambiente
-rm(infra_ciclo)
 
 
 # ------------------------------------------------------------------------------
@@ -552,13 +527,54 @@ rm(infra_ciclo)
 # ------------------------------------------------------------------------------
 
 # Atualizar a coluna de tags original, juntando todas as novas tags
-osm_edit <- 
-  osm_edit %>% 
-  mutate(tags = str_c(tag1_highway, tag2_smoothness, tag3_surface, tag4_lcn, sep = '')) %>% 
-  # Manter somente as colunas de interesse
-  select(obj_type, tags, lon, lat, index_col)
+osm_edit <- osm_edit %>% mutate(tags = str_c(tag1_highway, tag2_smoothness, tag3_surface, tag4_lcn, 
+                                             sep = ''))
 
-# osm_edit %>% filter(str_detect(tags, 'lcn'))
+osm_edit <- osm_edit %>% select(-c(tag1_highway, tag2_smoothness, tag3_surface, tag4_lcn))
+# head(osm_edit)
+
+
+
+# ------------------------------------------------------------------------------
+# TRATAMENTO LTS: REMOVER VIAS EXPRESSAS SEM INFRA CICLOVIÁRIA
+# ------------------------------------------------------------------------------
+
+# TODO: Por enquanto, as limitações de escolha de rota vão ser feitas direto no
+# arquivo JSON puxado pelo config-example.yml do GraphHopper em vez de excluir
+# diretamente vias com LTS alto. Se o resultado for bom, manter desta forma; se
+# não, a edição ocorre aqui.
+
+
+# # Estruturas de ciclofaixa estão em ciclo_ciclofx - marcá-las em osm_edit - depois
+# # voltaremos a elas
+# osm_edit <- osm_edit %>% mutate(ciclo = ifelse(osm_id %in% ciclo_ciclofx$osm_id, 
+#                                                'sim', 
+#                                                'não'),
+#                                 .before = 'class_via')
+# # head(osm_edit)
+# 
+# # Selecionar osm_ids que serão removidos
+# remove_tags <- c('motorway', 'motorway_link', 'trunk', 'trunk_link')
+# remove_ids <- 
+#   osm_edit %>% 
+#   filter((class_via == 'vtr' | tag_highway %in% remove_tags) & ciclo == 'não') %>% 
+#   select(osm_id) %>% 
+#   distinct()
+# 
+# # Remover osm_ids que vão ficar de fora no teste do LTS
+# osm_edit <- osm_edit %>% filter(!osm_id %in% remove_ids$osm_id)
+# # head(osm_edit)
+
+
+# Manter somente as colunas de interesse
+osm_edit <- osm_edit %>% select(obj_type, tags, lon, lat, index_col)
+# head(osm_edit)
+
+# Limpar ambiente
+rm(class_viaria, remove_tags, remove_ids)
+gc(T)
+# head(osm_edit)
+
 
 
 # ------------------------------------------------------------------------------
@@ -630,7 +646,7 @@ rm(lcn, lcn_ids, ciclo_ciclofx)
 osm <- osm %>% rbind(osm_edit) %>% arrange(index_col) %>% select(-index_col)
 
 # Limpar ambiente
-rm(osm_edit)
+# rm(osm_edit)
 
 
 
@@ -640,14 +656,13 @@ rm(osm_edit)
 
 # Salvar arquivo resultante .opl - atenção para o delimitador, que é um espaço,
 # retirar nomes de colunas e para a exportação de NAs como ''
-osm_file_out <- sprintf('%s/lala_altered.opl', pasta_gh_pbfs)
+osm_file_out <- sprintf('%s/lala_altered.opl', pasta_pbf_modalt)
 # write_delim(boo, osm_file_out, delim = ' ', col_names = FALSE)
 write_delim(osm, osm_file_out, delim = ' ', col_names = FALSE, na = '')
 
-# Nomear arquivo de testes
-pbf_file_out  <- sprintf('%s/20220216_sao_paulo_edited_20230521_A_infraciclo_atual.osm.pbf', pasta_gh_pbfs)
 
 # Converter arquivo .opl de volta para o formato .pbf, para ser compilado
+# pbf_file_out está declarado ao início do script
 arg_o4 <- sprintf('cat "%s"', osm_file_out)
 arg_o5 <- sprintf('--overwrite')
 arg_o6 <- sprintf('-o "%s"', pbf_file_out)
@@ -661,3 +676,13 @@ rm(arg_o4, arg_o5, arg_o6)
 # file.remove(osm_file_tmp)
 file.remove(osm_file_out)
 file.remove(osm_file_tmp)
+
+
+# Para testar, no terminal:
+# clear && cd /home/livre/Desktop/Base_GtsRegionais/GitLab/yellow_src/graphhopper/ && rm -rf graph-cache/ && java -Ddw.graphhopper.datareader.file=/home/livre/Desktop/Base_GtsRegionais/GitLab/yellow_dados/11_rotas_modeladas_com_alternativas/PBFs/20220216_edit20240418_SP_infraciclo_2019_infraciclo_2019.osm.pbf -jar graphhopper/web/target/graphhopper-web-*.jar server graphhopper/config-example.yml
+
+# E abrir no navegador:
+# http://localhost:8989/
+
+# Testar polyline:
+# https://valhalla.github.io/demos/polyline/?unescape=true&polyline6=false#%0A

@@ -9,8 +9,8 @@
 # neighbor de cada ponto e associar ao qgis_id. Para isso:
 
 # Arquivos a serem usados:
-# 09_rotas_ttmatrix/01_trechos_agrupados/02_ttmatrix_res09_2019_rotas_agrupadas.gpkg
-# 09_rotas_ttmatrix/01_trechos_agrupados/02_ttmatrix_res09_2028_rotas_agrupadas.gpkg
+# 09_analise_rotas_modeladas_aop/01_trechos_agrupados/02_ttmatrix_res09_2019_rotas_agrupadas.gpkg
+# 09_analise_rotas_modeladas_aop/01_trechos_agrupados/02_ttmatrix_res09_2028_rotas_agrupadas.gpkg
 
 # Processing Toolbox > Vector geometry > Points along geometry
 # Input Layer: 02_ttmatrix_res09_2019_rotas_agrupadas.gpkg
@@ -25,9 +25,9 @@
 # - Deixar como SIRGAS23S
 # - Selecionar somente a coluna index_col
 # Exportar como:
-# 09_rotas_ttmatrix/02_associacao_qgis_id/01_interpolated_points_2019.gpkg
+# 09_analise_rotas_modeladas_aop/02_associacao_qgis_id/01_interpolated_points_2019.gpkg
 # (repetir para 2028)
-# 09_rotas_ttmatrix/02_associacao_qgis_id/01_interpolated_points_2028.gpkg
+# 09_analise_rotas_modeladas_aop/02_associacao_qgis_id/01_interpolated_points_2028.gpkg
 
 
 
@@ -40,8 +40,8 @@
 # 03_curva_elevacao_sp/viario_osmid_qgisid_pontos_2m_draped.gpkg
 # 
 # 2. A camada de pontos resultantes do processo anterior, para associação (rodar uma vez para cada)
-# 09_rotas_ttmatrix/02_associacao_qgis_id/interpolated_points_2019.gpkg
-# 09_rotas_ttmatrix/02_associacao_qgis_id/interpolated_points_2028.gpkg
+# 09_analise_rotas_modeladas_aop/02_associacao_qgis_id/interpolated_points_2019.gpkg
+# 09_analise_rotas_modeladas_aop/02_associacao_qgis_id/interpolated_points_2028.gpkg
 
 
 # Juntar atributos de classificação viária
@@ -57,7 +57,7 @@
 # em alguns bairros o pessoal traçou calçadas e isso zoava a proximidade do 
 # vizinho com o atributo de viário)
 # Joined layer [optional] - Salvar como gpkg: 
-# 09_rotas_ttmatrix/02_interpolated_points_2019_joined_qgis_id.gpkg
+# 09_analise_rotas_modeladas_aop/02_interpolated_points_2019_joined_qgis_id.gpkg
 
 
 # Destes arquivos, abrir no R (abaixo), selecionar colunas e exportar em CSV.
@@ -76,7 +76,7 @@ library('sf')
 # Estrutura de pastas
 pasta_dados           <- "../../yellow_dados"
 pasta_atrib_viario    <- sprintf('%s/04_atributos_viario', pasta_dados)
-pasta_ttmatrix_qgisid <- sprintf("%s/09_rotas_ttmatrix/02_associacao_qgis_id", pasta_dados)
+pasta_ttmatrix_qgisid <- sprintf("%s/09_analise_rotas_modeladas_aop/02_associacao_qgis_id", pasta_dados)
 # dir.create(pasta_ttmatrix_qgisid, recursive = TRUE, showWarnings = FALSE)
 
 
@@ -127,7 +127,7 @@ rotas_grouped <-
 
 # O que está acontecendo aqui é que alguns trechos ficaram com duas linhas no
 # momento em que geramos os arquivos que reconstituíam as rotas:
-# 09_rotas_ttmatrix/01_trechos_agrupados/02_ttmatrix_res09_2028_rotas_agrupadas.gpkg
+# 09_analise_rotas_modeladas_aop/01_trechos_agrupados/02_ttmatrix_res09_2028_rotas_agrupadas.gpkg
 # Provavelmente, isso se deu devido a dois cenários:
 # 1. Havia dois sentidos, de ida e de volta, em vias bidirecionais, resultando 
 # em duas linhas diferentes;
