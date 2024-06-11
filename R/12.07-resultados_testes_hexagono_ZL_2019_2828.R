@@ -26,12 +26,13 @@ data.frame(nas = colSums(is.na(res2028))) %>% filter(nas > 0)
 # Compensar tempos em ciclovias, devido à velocidade alterada
 # ------------------------------------------------------------------------------
 
-# No ajuste do modelo, aumentamos a velocidade das ciclovias comuns de +0.139447 km/h
+# No ajuste do modelo, aumentamos a velocidade das ciclovias de +0.139447 km/h
 # para +1.94586 km/h, uma diferença de 1.80586 km/h. Fizemos isso para que as 
 # ciclovias ficassem mais atrativas e fossem escolhidas como rota, mas isso 
 # significa que esses trechos percorridos em ciclovia estão sendo mais rápidos
-# do que deveriam. Vamos compensar isso adicionando um x de segundos a mais
-# por metro percorrido em ciclovia ao tempo final de cada viagem. 
+# do que deveriam. Vamos compensar isso. Importante comentar que como o valor
+# extra foi aplicado na tag 'cycleway', ele afeta tanto as ciclovias comuns
+# quanto as ciclovias expressas.
 
 # Para o cálculo, precisaríamos não apenas da velocidade média da viagem, mas da
 # velocidade média específica para os trechos em ciclovia. Conseguiríamos, assim,
@@ -48,7 +49,7 @@ data.frame(nas = colSums(is.na(res2028))) %>% filter(nas > 0)
 
 # No exemplo a seguir, temos a velocidade média de 10,7 km/h (2,97 mps), distância
 # total de 11.307 metros e distância em ciclovia de 1.050 metros. Isso resulta
-# em uma compensação de 49,7 segundos ao tempo final.
+# em uma compensação de 49,8 segundos ao tempo final.
 # res2019 %>%
 #   # Remover linhas que não passaram por ciclovias
 #   filter(ciclo_comum > 1000) %>%
@@ -65,6 +66,7 @@ data.frame(nas = colSums(is.na(res2028))) %>% filter(nas > 0)
 
 
 # dif_tempo = dist_em_ciclovia / (velocidade_média + 0.14) - dist_em_ciclovia / (velocidade_média + 1.95)
+# 1.050*((1/(10.7+0.139447))-(1/(10.7+1.945864)))*3600
 res2019 <- 
   res2019 %>% 
   mutate(time_dif = (ciclo_comum / ((speed / 3.6) + (0.139447 / 3.6))) - (ciclo_comum / ((speed / 3.6) + (1.945864 / 3.6))),

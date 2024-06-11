@@ -20,6 +20,148 @@ dir.create(pasta_osmids_aopt, recursive = TRUE, showWarnings = FALSE)
 dir.create(pasta_rotas_aopt, recursive = TRUE, showWarnings = FALSE)
 
 
+
+# ------------------------------------------------------------------------------
+# Routing a partir de dois pontos com rotas alternativas (até 3 por par OD)
+# ------------------------------------------------------------------------------
+
+# Faz query de routing no GraphHopper e retorna resultados principais em dataframe,
+# com rotas até 3 alternativas por par OD - aceita um dataframe de uma linha como
+# entrada
+gh_route_alt <- function(hex_id) {
+  # url <- 'http://localhost:8989/route/?point=-23.5314933121698%2C-46.634354542765&point=-23.5390199310058%2C-46.6376369484305&profile=bike&instructions=false&calc_points=true&details=average_speed'
+  # url <- ods_vgs %>% slice(1) %>% select(url) %>% pull()
+  # Estação Vila Madalena: -23.546258,-46.690898
+  # IME: -23.559007,-46.73208
+  # CCSP: -23.571498,-46.639806
+  
+  # hex_id <- '89a81046b2fffff-89a81044d8fffff'
+  # hex_id <- hex_com_vizinhos %>% head(1) %>% select(id) %>% pull()
+  df_line <- hex_com_vizinhos %>% filter(id == hex_id)
+  # Encurtar hex_id - todos aqui são '89a81' + 6 caracteres de dígito ou letra = 'ffff'
+  hex_id_short <- str_replace(hex_id, '^89a81([a-z0-9]{6})ffff-89a81([a-z0-9]{6})ffff', '\\1-\\2')
+  hex_id_base  <- str_sub(hex_id_short, 1, 6)
+  
+  # Fazer a GET de roteamento no Grahphopper
+  # print(df_line$url)
+  gh_response <- GET(df_line$url)
+  
+  # Mensagem tem que ser "Success: (200) OK"
+  if (http_status(gh_response)$message == 'Success: (200) OK') {
+    
+    # Resposta da query, já colapsada e transformada em dataframe
+    # Remover aviso de 'No encoding supplied: defaulting to UTF-8' na linha fromJSON()
+    suppressMessages(
+      response_text <- 
+        # Ignorar aviso 'argument is not an atomic vector; coercing'
+        suppressWarnings(str_c(content(gh_response, 'text'), collapse = ", ")) %>% 
+        # Concatenar toda a string de resultados
+        str_c("[", ., "]") %>% 
+        # Transformar em dataframe
+        fromJSON() %>% 
+        as.data.frame()
+    )
+    
+    # Nos interessa a coluna de 'paths', como um novo dataframe
+    paths <- response_text$paths %>% as.data.frame()
+    
+    # Puxar osm_way_ids dos resultados de cada alternativa e gravar em pasta separada
+    for (i in seq(1, length(paths$details$osm_way_id))) {
+      # i <- 1
+      osm_ways <- paths$details$osm_way_id[i] %>% as.data.frame()
+      
+      if (nrow(osm_ways) > 0) {
+        # Manter somente osm_ids e inserir número da rota alternativa
+        osm_ways <- osm_ways %>% select(osm_way_id = X3) %>% mutate(hex_id = hex_id_short,
+                                                                    alt = i,
+                                                                    index = row_number(),
+                                                                    .before = 'osm_way_id')
+        # Gravar resultados agrupados por hex_id_short de origem
+        osm_way_out <- sprintf('%s/%s.csv', pasta_osmids_aopt, hex_id_base)
+        if (file.exists(osm_way_out)) {
+          write_delim(osm_ways, osm_way_out, delim = ';', append = TRUE)
+        } else {
+          write_delim(osm_ways, osm_way_out, delim = ';', append = FALSE)
+        }
+        
+      } else {
+        # Se não há osm_way_ids, é porque os pontos estão muito próximos uns dos
+        # outros, mesmo que seja um osm_way_id diferente entre a origem e o 
+        # destino. A distância e a velocidade calculadas vão ser zero também - 
+        # pular este registro, que vai ser vazio
+        return(sprintf('Pulando: %s não tem osm_way_ids (provavelmente tem distância = 0)', hex_id))
+      }
+      
+    }
+    
+    
+    # Isolar colunas de interesse
+    paths <- 
+      paths %>% 
+      # Calcular tempo em segundos e velocidade média
+      mutate(time = time / 1000,
+             speed = distance / time * 3.6) %>% 
+      # Descartar colunas extras - a coluna poly é o shape da rota traçada
+      select(distance, weight, time, speed, poly = points)
+    
+    # Testar polyline:
+    # https://valhalla.github.io/demos/polyline/?unescape=true&polyline6=false#%0A
+    
+    # Adicionar colunas de informação vindas do dataframe original
+    paths <- 
+      paths %>% 
+      mutate(hex_id    = hex_id_short,
+             alt       = row_number(),
+             # id_hex.x  = df_line$id_hex_x,
+             # id_hex.y  = df_line$id_hex_y,
+             .before = 'distance') #%>% 
+    # mutate(lon.x     = df_line$lon.x,
+    #        lat.x     = df_line$lat.x,
+    #        lon.y     = df_line$lon.y,
+    #        lat.y     = df_line$lat.y,
+    #        .after = 'poly')
+    
+  } else {
+    
+    # Se a query no GraphHopper não deu resultados, guardar como dataframe vazio
+    paths <- data.frame(hex_id    = hex_id_short,
+                        alt       = NA,
+                        # id_hex.x  = df_line$id_hex_x,
+                        # id_hex.y  = df_line$id_hex_y,
+                        distance  = NA,
+                        weight    = NA,
+                        time      = NA,
+                        speed     = NA,
+                        poly      = NA
+                        # lon.x     = df_line$lon.x,
+                        # lat.x     = df_line$lat.x,
+                        # lon.y     = df_line$lon.y,
+                        # lat.y     = df_line$lat.y
+    )
+    
+  }
+  
+  # Guardar resultados temporários agrupados por hex_id_short de origem
+  tmp_file <- sprintf('%s/%s_modalt.csv', pasta_rotas_aopt, hex_id_base)
+  if (file.exists(tmp_file)) {
+    write_delim(paths, tmp_file, delim = ';', append = TRUE)
+  } else {
+    write_delim(paths, tmp_file, delim = ';', append = FALSE)
+  }
+  
+  # Guardar ids já processados em arquivo próprio
+  df_line <- df_line %>% select(id)
+  ids_processados <- sprintf('%s/tmp_00_ids_processados_2019.csv', pasta_aoprv_teste)
+  
+  if (file.exists(ids_processados)) {
+    write_delim(df_line, ids_processados, delim = ';', append = TRUE)
+  } else {
+    write_delim(df_line, ids_processados, delim = ';', append = FALSE)
+  }
+  
+}
+
+
 # ------------------------------------------------------------------------------
 # Agregar totais de população e oportunidades aos hexágonos
 # ------------------------------------------------------------------------------
@@ -92,135 +234,12 @@ rm(hex_sp, dados_ipea, dados_ipea_pop)
 
 
 # ------------------------------------------------------------------------------
-# Routing a partir de dois pontos com rotas alternativas (até 3 por par OD)
-# ------------------------------------------------------------------------------
-
-# Faz query de routing no GraphHopper e retorna resultados principais em dataframe,
-# com rotas até 3 alternativas por par OD - aceita um dataframe de uma linha como
-# entrada
-gh_route_alt <- function(hex_id, route_options) {
-  # url <- 'http://localhost:8989/route/?point=-23.5314933121698%2C-46.634354542765&point=-23.5390199310058%2C-46.6376369484305&profile=bike&instructions=false&calc_points=true&details=average_speed'
-  # url <- ods_vgs %>% slice(1) %>% select(url) %>% pull()
-  # Estação Vila Madalena: -23.546258,-46.690898
-  # IME: -23.559007,-46.73208
-  # CCSP: -23.571498,-46.639806
-  
-  # df_line$url <- paste('http://localhost:8989/route/?point=', 
-  # '-23.541504', '%2C', '-46.685779', '&point=', 
-  # '-23.571498', '%2C', '-46.639806', route_options,
-  # sep = '')
-  
-  # hex_id <- '89a81046b2fffff-89a81044d8fffff'
-  # hex_id <- hex_com_vizinhos %>% head(1) %>% select(id) %>% pull()
-  df_line <- hex_com_vizinhos %>% filter(id == hex_id)
-  
-  # Fazer a GET de roteamento no Grahphopper
-  # print(df_line$url)
-  gh_response <- GET(df_line$url)
-  
-  # Mensagem tem que ser "Success: (200) OK"
-  if (http_status(gh_response)$message == 'Success: (200) OK') {
-    
-    # Resposta da query, já colapsada e transformada em dataframe
-    # Remover aviso de 'No encoding supplied: defaulting to UTF-8' na linha fromJSON()
-    suppressMessages(
-      response_text <- 
-        # Ignorar aviso 'argument is not an atomic vector; coercing'
-        suppressWarnings(str_c(content(gh_response, 'text'), collapse = ", ")) %>% 
-        # Concatenar toda a string de resultados
-        str_c("[", ., "]") %>% 
-        # Transformar em dataframe
-        fromJSON() %>% 
-        as.data.frame()
-    )
-    
-    # Nos interessa a coluna de 'paths', como um novo dataframe
-    paths <- response_text$paths %>% as.data.frame()
-    
-    # Puxar osm_way_ids dos resultados de cada alternativa e gravar em pasta separada
-    for (i in seq(1, length(paths$details$osm_way_id))) {
-      osm_ways <- paths$details$osm_way_id[i] %>% as.data.frame()
-      
-      if (nrow(osm_ways) > 0) {
-        # TODO: Inserir número da rota alternativa aqui
-        osm_ways <- osm_ways %>% mutate(index = row_number()) %>% select(index, osm_way_id = X3)
-        
-        # Gravar resultados
-        osm_way_out <- sprintf('%s/%s_%i.csv', pasta_osmids_aopt, df_line$id, i)
-        write_delim(osm_ways, osm_way_out, delim = ';')
-        
-      } else {
-        # Se não há osm_way_ids, é porque os pontos estão muito próximos uns dos
-        # outros, mesmo que seja um osm_way_id diferente entre a origem e o 
-        # destino. A distância e a velocidade calculadas vão ser zero também - 
-        # pular este registro, que vai ser vazio
-        return(sprintf('Pulando: %s não tem osm_way_ids (provavelmente tem distância = 0)', tripid))
-      }
-      
-    }
-    
-    
-    # Isolar colunas de interesse
-    paths <- 
-      paths %>% 
-      # Calcular tempo em segundos e velocidade média
-      mutate(time = time / 1000,
-             speed = distance / time * 3.6) %>% 
-      # Descartar colunas extras - a coluna poly é o shape da rota traçada
-      select(distance, weight, time, speed, poly = points)
-    
-    # Testar polyline:
-    # https://valhalla.github.io/demos/polyline/?unescape=true&polyline6=false#%0A
-    
-    # Adicionar colunas de informação vindas do dataframe original
-    paths <- 
-      paths %>% 
-      mutate(hex_id    = df_line$id,
-             alt       = row_number(),
-             id_hex.x  = df_line$id_hex_x,
-             id_hex.y  = df_line$id_hex_y,
-             .before = 'distance') %>% 
-      mutate(lon.x     = df_line$lon.x,
-             lat.x     = df_line$lat.x,
-             lon.y     = df_line$lon.y,
-             lat.y     = df_line$lat.y,
-             .after = 'poly')
-    
-  } else {
-    
-    # Se a query no GraphHopper não deu resultados, guardar como dataframe vazio
-    paths <- data.frame(hex_id    = df_line$id,
-                        alt       = NA,
-                        id_hex.x  = df_line$id_hex_x,
-                        id_hex.y  = df_line$id_hex_y,
-                        distance  = NA,
-                        weight    = NA,
-                        time      = NA,
-                        speed     = NA,
-                        poly      = NA,
-                        lon.x     = df_line$lon.x,
-                        lat.x     = df_line$lat.x,
-                        lon.y     = df_line$lon.y,
-                        lat.y     = df_line$lat.y
-    )
-    
-  }
-  
-  # Guardar resultados temporários
-  tmp_file <- sprintf('%s/%s_modalt.csv', pasta_rotas_aopt, df_line$id)
-  write_delim(paths, tmp_file, delim = ';')
-  
-}
-
-
-
-# ------------------------------------------------------------------------------
 # Routing a partir de dois pontos
 # ------------------------------------------------------------------------------
 
-# Para o primeiro teste, queremos apenas um hexágono da zona leste - '89a81046b2fffff'
-# filter: removed 10,910,490 rows (>99%), 1,076 rows remaining
-hex_com_vizinhos <- hex_com_vizinhos %>% filter(id_hex_x == '89a81046b2fffff')
+# Para o primeiro teste, queremos apenas dois hexágonos da zona leste
+# filter: removed 10,909,452 rows (>99%), 2,114 rows remaining
+hex_com_vizinhos <- hex_com_vizinhos %>% filter(id_hex_x == '89a81046b2fffff' | id_hex_x == '89a81044d93ffff')
 # hex_com_vizinhos %>% filter(id_hex_x == id_hex_y)
 # head(hex_com_vizinhos)
 
@@ -237,7 +256,13 @@ hex_com_vizinhos <-
 
 # Criar uma coluna de id
 hex_com_vizinhos <- hex_com_vizinhos %>% mutate(id = str_c(id_hex_x, id_hex_y, sep = '-'), .before = 'id_hex_x')
+hex_com_vizinhos <- hex_com_vizinhos %>% select(id, url)
 head(hex_com_vizinhos)
+
+
+# Guardar resultados - base integral
+out_file <- sprintf('%s/00_base_para_teste_routing_res09_26vizinhos.csv', pasta_aoprv_teste)
+write_delim(hex_com_vizinhos, out_file, delim = ';')
 
 
 # Checar quais resultados já foram rodados - abrir lista, puxar ids e remover
@@ -254,29 +279,39 @@ detach("package:tidylog")
 
 # Criar ttmatrix a partir do GrahHopper - melhor rodar no Jupyter se for AOP;
 # se forem só as rotas originais, é ok rodar no RStudio
-for (id in hex_com_vizinhos$id) { gh_route_alt(id, route_options = route_options) }
+for (id in hex_com_vizinhos$id) { gh_route_alt(id) }
 
 
 
 # ------------------------------------------------------------------------------
-# Juntar todos os resultados
+# Fazer arquivos identificados que ficaram de fora
 # ------------------------------------------------------------------------------
 
-# Arquivo de saída
-out_file <- sprintf('%s/01_ttmatrix_teste_hexagono_ZL_2019.csv', pasta_aoprv_teste)
+# Esta parte do script é para rodar de novo somente com os arquivos que foram 
+# detectados que ficaram de fora ao processar os resultados e tentar gerar a
+# ttmatrix para rotas com e sem infraestrutura cicloviária. Devem ser poucos
+# arquivos que por qualquer motivo não ficaram salvos nas bases - talvez porque
+# o future tenha feito um multi-processamento que tentou escrever ao mesmo tempo
+# no mesmo arquivo e não conseguiu. Para rodar de novo, é só rodar esse script
+# até a declaração das funções e pular todo o resto. Comentar as linhas abaixo
+# e rodar a partir delas
 
-# Listar todos os arquivos de resultados em um dataframe único
-arqs_resultados <- data.frame(arq = list.files(pasta_rotas_aopt, recursive = FALSE, full.names = TRUE))
-
-for (arq in arqs_resultados$arq) {
-  # Abrir arquivo de resultados
-  arq <- read_delim(arq, delim = ';', col_types = cols(.default = "c"))
-  
-  # Guardar resultados 
-  if (file.exists(out_file)) {
-    write_delim(arq, out_file, delim = ';', append = TRUE)
-  } else {
-    write_delim(arq, out_file, delim = ';', append = FALSE)
-  }
-  
-}
+# # Abrir hexágonos para SP combinados com vizinhos
+# hex_com_vizinhos <- sprintf("%s/00_base_para_teste_routing_res09_26vizinhos.csv", pasta_aoprv_teste)
+# hex_com_vizinhos <- read_delim(hex_com_vizinhos, delim = ';', col_types = cols(.default = "c"))
+# head(hex_com_vizinhos)
+# 
+# # Arquivos identificados que faltam rodar (scripts pós routing com graphhopper)
+# arq_faltam <- sprintf('%s/xxx_faltam_processar.csv', pasta_aoprv_teste)
+# faltam <- read_delim(arq_faltam, delim = ';', col_types = 'c')
+# 
+# hex_com_vizinhos <- hex_com_vizinhos %>% filter(id %in% faltam$id)
+# 
+# # Para cada linha de origem e destino, gerar rotas modeladas com alternativas
+# detach("package:tidylog")
+# 
+# # Criar ttmatrix a partir do GrahHopper - melhor rodar no Jupyter se for AOP;
+# # se forem só as rotas originais, é ok rodar no RStudio
+# for (id in hex_com_vizinhos$id) { gh_route_alt(id) }
+# 
+# file.remove(arq_faltam)
