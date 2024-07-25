@@ -1,8 +1,6 @@
-# Este é o mesmo script do anterior, só mudando a rede para 2028 e as pastas de destino
-
 # Comando para rodar o GraphHopper no terminal - atenção para o PBF a ser carregado:
-# PBF da Rede 2028; custom model ajustado (LTS)
-# clear && cd /home/livre/Desktop/Base_GtsRegionais/GitLab/yellow_src/graphhopper/ && rm -rf graph-cache/ && java -Ddw.graphhopper.datareader.file=/home/livre/Desktop/Base_GtsRegionais/GitLab/yellow_dados/07_graphhopper/05_PBFs_SP_rede_2028/20220216_sao_paulo_edited_20230527_B_infraciclo_referencia.osm.pbf -jar graphhopper/web/target/graphhopper-web-*.jar server graphhopper/config-example_LTS.yml
+# PBF da Rede 2019; custom model ajustado (LTS)
+# clear && cd /home/livre/Desktop/Base_GtsRegionais/GitLab/yellow_src/graphhopper/ && rm -rf graph-cache/ && java -Ddw.graphhopper.datareader.file=/home/livre/Desktop/Base_GtsRegionais/GitLab/yellow_dados/07_graphhopper/03_PBFs_SP_rede_2019/20220216_sao_paulo_edited_20230521_A_infraciclo_atual.osm.pbf -jar graphhopper/web/target/graphhopper-web-*.jar server graphhopper/config-example_LTS.yml
 
 # carregar bibliotecas
 source('fun/setup.R')
@@ -11,13 +9,14 @@ library('jsonlite')
 
 
 # Estrutura de pastas
+pasta_ssd         <- "/media/livre/SSD120GB/yellow"
 pasta_dados       <- "../../yellow_dados"
 pasta_aop_rev     <- sprintf("%s/12_aop_revisitado", pasta_dados)
-pasta_aoprv_teste <- sprintf("%s/02_teste_aop_alternatives", pasta_aop_rev)
-pasta_osmids_aopt2 <- sprintf("%s/C_2028_osm_way_ids_aop", pasta_aoprv_teste)
-pasta_rotas_aopt2  <- sprintf("%s/D_2028_rotas_modeladas_alternatives", pasta_aoprv_teste)
-dir.create(pasta_osmids_aopt2, recursive = TRUE, showWarnings = FALSE)
-dir.create(pasta_rotas_aopt2, recursive = TRUE, showWarnings = FALSE)
+pasta_aoprv_alter <- sprintf("%s/03_aop_alternatives_2019_2028", pasta_aop_rev)
+# pasta_ids_aopt_19 <- sprintf("%s/A_2019_osm_way_ids_aop", pasta_aoprv_alter)
+# pasta_rts_aopt_19 <- sprintf("%s/B_2019_rotas_modeladas_alternatives", pasta_aoprv_alter)
+# dir.create(pasta_ids_aopt_19, recursive = TRUE, showWarnings = FALSE)
+# dir.create(pasta_rts_aopt_19, recursive = TRUE, showWarnings = FALSE)
 
 ano <- '2019'
 
@@ -205,7 +204,7 @@ gh_route_alt_full <- function(hex_id) {
         osm_ways <- osm_ways %>% select(-c(road_class, lcn))
         
         # Gravar resultados agrupados por hex_id_short de origem
-        osm_way_out <- sprintf('%s/%s_%s.csv', pasta_osmids_aopt2, hex_id_short, ano)
+        osm_way_out <- sprintf('%s/%s_%s.csv', pasta_ids_aopt_19, hex_id_short, ano)
         if (file.exists(osm_way_out)) {
           write_delim(osm_ways, osm_way_out, delim = ';', append = TRUE)
         } else {
@@ -270,7 +269,7 @@ gh_route_alt_full <- function(hex_id) {
   }
   
   # Guardar resultados temporários agrupados por hex_id_short de origem
-  tmp_file <- sprintf('%s/%s_modalt_%s.csv', pasta_rotas_aopt2, hex_id_short, ano)
+  tmp_file <- sprintf('%s/%s_modalt_%s.csv', pasta_rts_aopt_19, hex_id_short, ano)
   if (file.exists(tmp_file)) {
     write_delim(paths, tmp_file, delim = ';', append = TRUE)
   } else {
@@ -279,7 +278,7 @@ gh_route_alt_full <- function(hex_id) {
   
   # Guardar ids já processados em arquivo próprio
   df_line <- df_line %>% select(id)
-  ids_processados <- sprintf('%s/tmp_00_ids_processados_%s.csv', pasta_aoprv_teste, ano)
+  ids_processados <- sprintf('%s/tmp_00_ids_processados_%s.csv', pasta_aoprv_alter, ano)
   
   if (file.exists(ids_processados)) {
     write_delim(df_line, ids_processados, delim = ';', append = TRUE)
@@ -291,45 +290,109 @@ gh_route_alt_full <- function(hex_id) {
 
 
 # ------------------------------------------------------------------------------
-# Routing a partir de dois pontos
+# Calcular matriz de distâncias - RStudio
 # ------------------------------------------------------------------------------
 
-# Para o primeiro teste, queremos apenas dois hexágonos da zona leste
-hex_com_vizinhos <- sprintf('%s/00_base_para_teste_routing_res09_26vizinhos.csv', pasta_aoprv_teste)
-hex_com_vizinhos <- read_delim(hex_com_vizinhos, delim = ';', col_types = 'cc')
-head(hex_com_vizinhos)
-
-
+# # Abrir base para routing com 26 vizinhos, manter só id e url
+# hex_com_vizinhos <- sprintf('%s/00_base_para_routing_res09_26vizinhos.csv', pasta_aoprv_alter)
+# hex_com_vizinhos <- read_delim(hex_com_vizinhos, delim = ';', col_types = cols(.default = "c"))
+# hex_com_vizinhos <- hex_com_vizinhos %>% select(id, url)
+# head(hex_com_vizinhos)
+# 
+# 
+# # # Checar quais resultados já foram rodados - abrir lista, puxar ids e remover
+# # # do dataframe hex_com_vizinhos se houver
+# # # library('tidylog')
+# # arqs_resultados <- data.frame(arq = list.files(pasta_rotas_aopt, recursive = FALSE, full.names = FALSE))
+# # arqs_resultados <- arqs_resultados %>% mutate(hex_id = str_replace(arq, '_modalt.csv', ''))
+# # hex_com_vizinhos <- hex_com_vizinhos %>% filter(!id %in% arqs_resultados$hex_id)
+# # rm(arqs_resultados)
+# 
+# # Arquivos já processados
+# ids_processados <- sprintf('%s/tmp_00_ids_processados_%s.csv', pasta_aoprv_teste, ano)
+# 
 # # Checar quais resultados já foram rodados - abrir lista, puxar ids e remover
 # # do dataframe hex_com_vizinhos se houver
 # # library('tidylog')
-# arqs_resultados <- data.frame(arq = list.files(pasta_rotas_aopt2, recursive = FALSE, full.names = FALSE))
-# arqs_resultados <- arqs_resultados %>% mutate(hex_id = str_replace(arq, '_modalt.csv', ''))
-# hex_com_vizinhos <- hex_com_vizinhos %>% filter(!id %in% arqs_resultados$hex_id)
-# rm(arqs_resultados)
+# if (file.exists(ids_processados)) {
+#   arqs_resultados  <- read_delim(ids_processados, delim = ';', col_types = "c")
+#   hex_com_vizinhos <- hex_com_vizinhos %>% filter(!id %in% arqs_resultados$id)
+#   rm(arqs_resultados)
+#   print(nrow(hex_com_vizinhos))
+# }
+# 
+# nrow(hex_com_vizinhos)
+# head(hex_com_vizinhos, 2)
+# 
+# # Para cada linha de origem e destino, gerar rotas modeladas com alternativas
+# detach("package:tidylog")
+# 
+# # Criar ttmatrix a partir do GrahHopper - melhor rodar no Jupyter se for AOP;
+# # se forem só as rotas originais, é ok rodar no RStudio
+# for (id in hex_com_vizinhos$id) { gh_route_alt_full(id) }
 
-# Arquivos já processados
-ids_processados <- sprintf('%s/tmp_00_ids_processados_%s.csv', pasta_aoprv_teste, ano)
 
-# Checar quais resultados já foram rodados - abrir lista, puxar ids e remover
-# do dataframe hex_com_vizinhos se houver
-# library('tidylog')
-if (file.exists(ids_processados)) {
-  arqs_resultados  <- read_delim(ids_processados, delim = ';', col_types = "c")
-  hex_com_vizinhos <- hex_com_vizinhos %>% filter(!id %in% arqs_resultados$id)
-  rm(arqs_resultados)
-  print(nrow(hex_com_vizinhos))
-}
+# ------------------------------------------------------------------------------
+# Para rodar no Jupyter com future
+# ------------------------------------------------------------------------------
 
-nrow(hex_com_vizinhos)
-head(hex_com_vizinhos, 2)
-
-# Para cada linha de origem e destino, gerar rotas modeladas com alternativas
 detach("package:tidylog")
 
-# Criar ttmatrix a partir do GrahHopper - melhor rodar no Jupyter se for AOP;
-# se forem só as rotas originais, é ok rodar no RStudio
-for (id in hex_com_vizinhos$id) { gh_route_alt_full(id) }
+# Arquivos a processar
+arqs <- list.files(pasta_ssd, pattern = '^tmp_base_para_routing_res09_26vizinhos_[0-9]{3}.csv', full.names = TRUE, recursive = FALSE)
+# Arquivos já processados
+ids_processados <- sprintf('%s/tmp_00_ids_processados_2019.csv', pasta_ssd)
+
+for (arq in arqs) {
+  # arq <- arqs[5]
+  print(arq)
+  
+  # Abrir base para routing com 26 vizinhos, manter só id e url  
+  hex_com_vizinhos <- read_delim(arq, delim = ';', col_types = cols(.default = "c"))
+  
+  # Checar quais resultados já foram rodados - abrir lista, puxar ids e remover
+  # do dataframe hex_com_vizinhos se houver
+  # library('tidylog')
+  if (file.exists(ids_processados)) {
+    arqs_resultados <- read_delim(ids_processados, delim = ';', col_types = "c")
+    hex_com_vizinhos <- hex_com_vizinhos %>% filter(!id %in% arqs_resultados$id)
+    rm(arqs_resultados)
+    print(nrow(hex_com_vizinhos))
+  }
+  
+  # Se arquivo já foi completamente processado, removê-lo e passar para o seguinte
+  if (nrow(hex_com_vizinhos) == 0) { 
+    file.remove(arq) 
+    next
+  }
+  
+  # Criar pastas temporárias
+  folder_number <- str_replace(str_extract(arq, '[0-9]{3}.csv'), '.csv', '')
+  pasta_ids_aopt_19 <- sprintf("%s/tmp_%s_osmids_%s", pasta_aoprv_alter, folder_number, ano)
+  pasta_rts_aopt_19 <- sprintf("%s/tmp_%s_rotasm_%s", pasta_aoprv_alter, folder_number, ano)
+  dir.create(pasta_ids_aopt_19, recursive = TRUE, showWarnings = FALSE)
+  dir.create(pasta_rts_aopt_19, recursive = TRUE, showWarnings = FALSE)
+  
+  # Criar ttmatrix a partir do GrahHopper - melhor rodar no Jupyter se for AOP;
+  # se forem só as rotas originais, é ok rodar no RStudio
+  # for (id in hex_com_vizinhos$id) { gh_route_alt(id, route_options = route_options) }
+  # Rodar função para todos os arquivos- multi thread (Jupyter)
+  (start = Sys.time())
+  future::plan(future::multicore)
+  invisible(future.apply::future_lapply(X   = hex_com_vizinhos$id,
+                                        FUN = gh_route_alt_full,
+                                        future.seed = TRUE))
+  Sys.time()
+  Sys.time() - start
+  
+  # Remover arquivo inteiramente processado
+  file.remove(arq) 
+  
+  # Limpar memória
+  rm(hex_com_vizinhos)  
+  # gc(T)
+  
+}
 
 
 # ------------------------------------------------------------------------------
@@ -344,7 +407,7 @@ hex_com_vizinhos <- hex_com_vizinhos %>% mutate(id = str_replace(id, '^89a81([a-
 head(hex_com_vizinhos)
 
 # Abrir arquivos de resultados
-arqs_resultados <- data.frame(arq = list.files(pasta_rotas_aopt2, recursive = FALSE, full.names = FALSE))
+arqs_resultados <- data.frame(arq = list.files(pasta_rotas_aopt, recursive = FALSE, full.names = FALSE))
 arqs_resultados <- arqs_resultados %>% mutate(arq = str_replace(arq, '_modalt_20[12][98].csv', ''))
 arqs_resultados <- arqs_resultados %>% distinct()
 
@@ -352,7 +415,7 @@ arqs_resultados <- arqs_resultados %>% distinct()
 hex_com_vizinhos %>% filter(!id %in% arqs_resultados$arq)
 
 # # Abrir arquivos de resultados
-# arqs_resultados <- data.frame(arq = list.files(pasta_rotas_aopt2, recursive = FALSE, full.names = TRUE))
+# arqs_resultados <- data.frame(arq = list.files(pasta_rotas_aopt, recursive = FALSE, full.names = TRUE))
 # arqs_resultados <- map_df(arqs_resultados, read_delim, delim = ';', col_select = 'hex_id', col_types = 'c')
 # arqs_resultados <- arqs_resultados %>% distinct()
 

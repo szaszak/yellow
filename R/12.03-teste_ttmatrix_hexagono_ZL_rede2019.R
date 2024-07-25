@@ -1,8 +1,6 @@
-# Este é o mesmo script do anterior, só mudando a rede para 2028 e as pastas de destino
-
 # Comando para rodar o GraphHopper no terminal - atenção para o PBF a ser carregado:
-# PBF da Rede 2028; custom model ajustado (LTS)
-# clear && cd /home/livre/Desktop/Base_GtsRegionais/GitLab/yellow_src/graphhopper/ && rm -rf graph-cache/ && java -Ddw.graphhopper.datareader.file=/home/livre/Desktop/Base_GtsRegionais/GitLab/yellow_dados/07_graphhopper/05_PBFs_SP_rede_2028/20220216_sao_paulo_edited_20230527_B_infraciclo_referencia.osm.pbf -jar graphhopper/web/target/graphhopper-web-*.jar server graphhopper/config-example_LTS.yml
+# PBF da Rede 2019; custom model ajustado (LTS)
+# clear && cd /home/livre/Desktop/Base_GtsRegionais/GitLab/yellow_src/graphhopper/ && rm -rf graph-cache/ && java -Ddw.graphhopper.datareader.file=/home/livre/Desktop/Base_GtsRegionais/GitLab/yellow_dados/07_graphhopper/03_PBFs_SP_rede_2019/20220216_sao_paulo_edited_20230521_A_infraciclo_atual.osm.pbf -jar graphhopper/web/target/graphhopper-web-*.jar server graphhopper/config-example_LTS.yml
 
 # carregar bibliotecas
 source('fun/setup.R')
@@ -14,10 +12,10 @@ library('jsonlite')
 pasta_dados       <- "../../yellow_dados"
 pasta_aop_rev     <- sprintf("%s/12_aop_revisitado", pasta_dados)
 pasta_aoprv_teste <- sprintf("%s/02_teste_aop_alternatives", pasta_aop_rev)
-pasta_osmids_aopt2 <- sprintf("%s/C_2028_osm_way_ids_aop", pasta_aoprv_teste)
-pasta_rotas_aopt2  <- sprintf("%s/D_2028_rotas_modeladas_alternatives", pasta_aoprv_teste)
-dir.create(pasta_osmids_aopt2, recursive = TRUE, showWarnings = FALSE)
-dir.create(pasta_rotas_aopt2, recursive = TRUE, showWarnings = FALSE)
+pasta_osmids_aopt <- sprintf("%s/A_2019_osm_way_ids_aop", pasta_aoprv_teste)
+pasta_rotas_aopt  <- sprintf("%s/B_2019_rotas_modeladas_alternatives", pasta_aoprv_teste)
+dir.create(pasta_osmids_aopt, recursive = TRUE, showWarnings = FALSE)
+dir.create(pasta_rotas_aopt, recursive = TRUE, showWarnings = FALSE)
 
 ano <- '2019'
 
@@ -205,7 +203,7 @@ gh_route_alt_full <- function(hex_id) {
         osm_ways <- osm_ways %>% select(-c(road_class, lcn))
         
         # Gravar resultados agrupados por hex_id_short de origem
-        osm_way_out <- sprintf('%s/%s_%s.csv', pasta_osmids_aopt2, hex_id_short, ano)
+        osm_way_out <- sprintf('%s/%s_%s.csv', pasta_osmids_aopt, hex_id_short, ano)
         if (file.exists(osm_way_out)) {
           write_delim(osm_ways, osm_way_out, delim = ';', append = TRUE)
         } else {
@@ -270,7 +268,7 @@ gh_route_alt_full <- function(hex_id) {
   }
   
   # Guardar resultados temporários agrupados por hex_id_short de origem
-  tmp_file <- sprintf('%s/%s_modalt_%s.csv', pasta_rotas_aopt2, hex_id_short, ano)
+  tmp_file <- sprintf('%s/%s_modalt_%s.csv', pasta_rotas_aopt, hex_id_short, ano)
   if (file.exists(tmp_file)) {
     write_delim(paths, tmp_file, delim = ';', append = TRUE)
   } else {
@@ -303,7 +301,7 @@ head(hex_com_vizinhos)
 # # Checar quais resultados já foram rodados - abrir lista, puxar ids e remover
 # # do dataframe hex_com_vizinhos se houver
 # # library('tidylog')
-# arqs_resultados <- data.frame(arq = list.files(pasta_rotas_aopt2, recursive = FALSE, full.names = FALSE))
+# arqs_resultados <- data.frame(arq = list.files(pasta_rotas_aopt, recursive = FALSE, full.names = FALSE))
 # arqs_resultados <- arqs_resultados %>% mutate(hex_id = str_replace(arq, '_modalt.csv', ''))
 # hex_com_vizinhos <- hex_com_vizinhos %>% filter(!id %in% arqs_resultados$hex_id)
 # rm(arqs_resultados)
@@ -344,7 +342,7 @@ hex_com_vizinhos <- hex_com_vizinhos %>% mutate(id = str_replace(id, '^89a81([a-
 head(hex_com_vizinhos)
 
 # Abrir arquivos de resultados
-arqs_resultados <- data.frame(arq = list.files(pasta_rotas_aopt2, recursive = FALSE, full.names = FALSE))
+arqs_resultados <- data.frame(arq = list.files(pasta_rotas_aopt, recursive = FALSE, full.names = FALSE))
 arqs_resultados <- arqs_resultados %>% mutate(arq = str_replace(arq, '_modalt_20[12][98].csv', ''))
 arqs_resultados <- arqs_resultados %>% distinct()
 
@@ -352,7 +350,7 @@ arqs_resultados <- arqs_resultados %>% distinct()
 hex_com_vizinhos %>% filter(!id %in% arqs_resultados$arq)
 
 # # Abrir arquivos de resultados
-# arqs_resultados <- data.frame(arq = list.files(pasta_rotas_aopt2, recursive = FALSE, full.names = TRUE))
+# arqs_resultados <- data.frame(arq = list.files(pasta_rotas_aopt, recursive = FALSE, full.names = TRUE))
 # arqs_resultados <- map_df(arqs_resultados, read_delim, delim = ';', col_select = 'hex_id', col_types = 'c')
 # arqs_resultados <- arqs_resultados %>% distinct()
 
