@@ -5,8 +5,8 @@ library('tidyverse')
 library('tidylog')
 
 # Definir ano de análise e limite máximo de tempo
-# ano <- '2019'; tempo_max <- '15'
-ano <- '2028'; tempo_max <- '15'
+ano <- '2019'; tempo_max <- '15'
+# ano <- '2028'; tempo_max <- '15'
 
 # Qual solução usar? A primeira considera população de interesse maior do que as
 # matrículas disponíveis; a segunda ajusta a população para caber nas matrículas
@@ -168,12 +168,9 @@ ods_resultados <-
   left_join(ciclo_od, by = c('orig', 'dest')) %>% 
   # Substituir NAs por zero para viagens que não passaram por infra_ciclo
   mutate(ext_ciclo = ifelse(is.na(ext_ciclo), 0, ext_ciclo)) %>% 
-  # Agrupar: extensão percorrida em infra cicloviária para cada par OD
-  group_by(orig, dest) %>% 
   # Extensão percorrida (em metros) é a quantidade de viagens vezes a extensão 
   # percorrida por rota
-  mutate(ext_ciclo_vgs = ext_ciclo * viagens) %>% 
-  ungroup()
+  mutate(ext_ciclo_vgs = ext_ciclo * viagens)
 
 
 # Agrupar por hexágonos, somente as viagens dentro do limite de tempo - resultado
@@ -185,7 +182,8 @@ hex_resultados_tempo_ok <-
   # (em metros) percorrida em infra cicloviária a partir daquela origem
   group_by(orig) %>% 
   summarise(viagens_a_tempo = sum(viagens),
-            ext_ciclo_tot_m = sum(ext_ciclo_vgs)) %>% 
+            ext_ciclo_tot_m = sum(ext_ciclo_vgs),
+            tempo_medio     = mean(time)) %>% 
   mutate(perc_part = ext_ciclo_tot_m / sum(.$ext_ciclo_tot_m) * 100) %>% 
   ungroup()
   
@@ -257,21 +255,8 @@ osm_id_resultados <-
 
 
 
-# Considerar somente as viagens dentro do limite de tempo
-hex_resultados_tempo_ok <- 
+osm_id_resultados <- 
   osm_id_resultados %>% 
-  filter(!is.na(time)) %>% 
-  # Calcular total de viagens em cada hexágono de origem e total da extensão
-  # (em metros) percorrida em infra cicloviária a partir daquela origem
-  group_by(orig) %>% 
-  summarise(viagens_a_tempo = sum(viagens),
-            ext_ciclo_tot_m = sum(ext_ciclo_vgs)) %>% 
-  mutate(perc_part = ext_ciclo_tot_m / sum(.$ext_ciclo_tot_m) * 100) %>% 
-  ungroup()
-
-
-
-%>% 
   # Calcular total de viagens em cada hexágono de origem e total da extensão
   # (em metros) percorrida em infra cicloviária a partir daquela origem
   group_by(osm_way_id) %>% 
