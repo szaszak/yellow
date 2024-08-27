@@ -80,12 +80,56 @@ estatisticas_descritivas <- function(var) {
   print(out)
 }
 
+estatisticas_descritivas_vg <- function(var) {
+  # Descrição das variáveis categóricas - uma por vez, agrupado por viagem
+  # https://uc-r.github.io/descriptives_categorical
+  # https://dplyr.tidyverse.org/articles/programming.html
+  out <- 
+    base_modelo %>%
+    select(trip_id, {{var}}) %>%
+    distinct() %>%
+    group_by(across(all_of({{var}}))) %>%
+    tally() %>%
+    mutate(prop = as.character(round(n / sum(n) * 100, 2)))
+  
+  
+  print(out)
+}
+
 desc_var <- c('inicio_fim', 'cat_grad', 'class_via', 'infra_ciclo', 'semaforos',
               'via_restr', 'osm_oneway', 'contramao', 'cat_dist_total', 
               'cat_dist_trecho','cat_curv', 'dia_util',
               'cat_fx_hora', 'cat_vg_loop', 'cat_vg_exper', 'cat_vg_conm',
               'cat_vg_parq')
 for (var in desc_var) { estatisticas_descritivas(var) }
+
+
+desc_var_vg <- c('cat_dist_total', 'cat_vg_conm', 
+                 'cat_vg_loop', 'cat_vg_parq',  'cat_vg_exper')
+for (var in desc_var_vg) { estatisticas_descritivas_vg(var) }
+
+# Alguns trip_ids possuem mais de uma categoria relacionada a 'dia_util' - pegar a primeira
+base_modelo %>%
+  # filter(trip_id == '005280_01') %>% 
+  select(trip_id, dia_util) %>%
+  distinct() %>%
+  group_by(trip_id) %>%
+  summarise(dia_util = first(dia_util)) %>% 
+  group_by(dia_util) %>% 
+  tally() %>%
+  mutate(prop = as.character(round(n / sum(n) * 100, 2)))
+
+
+# Alguns trip_ids possuem mais de uma categoria relacionada a 'cat_fx_hora' - pegar a primeira
+base_modelo %>%
+  # filter(trip_id == '005280_01') %>% 
+  select(trip_id, cat_fx_hora) %>%
+  distinct() %>%
+  group_by(trip_id) %>%
+  summarise(cat_fx_hora = first(cat_fx_hora)) %>% 
+  group_by(cat_fx_hora) %>% 
+  tally() %>%
+  mutate(prop = as.character(round(n / sum(n) * 100, 2)))
 
 
 
@@ -113,28 +157,23 @@ base_modelo %>%
          prop_total = round(dist / sum(.$dist) * 100, 2))
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+base_modelo %>% select(trip_id, dist_total) %>% distinct() %>% select(dist_total) %>% summary()
+# dist_total     
+# Min.   :  300.3  
+# 1st Qu.:  894.2  
+# Median : 1391.2  
+# Mean   : 1896.6  
+# 3rd Qu.: 2322.2  
+# Max.   :30266.7  
+base_modelo %>% select(trip_id, dist_total) %>% distinct() %>% select(dist_total) %>% quantile(probs = seq(0.8, 1, 0.005), na.rm = TRUE)
+#      80%     80.5%       81%     81.5%       82%     82.5%       83%     83.5%       84%     84.5%       85% 
+# 2656.588  2694.701  2734.861  2774.278  2817.207  2862.740  2909.903  2959.413  3009.171  3063.197  3111.941 
+#    85.5%       86%     86.5%       87%     87.5%       88%     88.5%       89%     89.5%       90%     90.5% 
+# 3166.802  3221.463  3282.655  3348.949  3413.681  3475.113  3541.925  3615.316  3695.193  3775.249  3863.199 
+#      91%     91.5%       92%     92.5%       93%     93.5%       94%     94.5%       95%     95.5%       96% 
+# 3957.052  4055.067  4157.739  4272.041  4398.488  4528.083  4666.254  4816.894  4990.879  5185.207  5404.459 
+#    96.5%       97%     97.5%       98%     98.5%       99%     99.5%      100% 
+# 5640.571  5955.318  6315.590  6739.180  7300.090  8038.369  9511.673 30266.671 
 
 
 # Método Favero e Belfiore para remoção de outliers extremos

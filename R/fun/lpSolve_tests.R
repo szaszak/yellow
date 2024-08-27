@@ -119,11 +119,13 @@ cost.mat
 # Este é um problema de minimização de custos (tempo)
 direction <- 'min'
 
-# As linhas são os hexágonos h3 resolução 09 com as quantidades de matrículas
+# As linhas são os hexágonos h3 resolução 09 com as quantidades de MATRÍCULAS
+# ATENÇÃO: row.signs sempre é <= a alguma coisa, que é a mesma utilizada em row.rhs
 row.signs <- rep('<=', nrow(mat))
 row.rhs <- mat$mat
 
-# As colunas são os hexágonos h3 resolução 09 com a população na faixa etária escolhida
+# As colunas são os hexágonos h3 resolução 09 com a POPULAÇÃO na faixa etária escolhida
+# ATENÇÃO: col.signs sempre é >= a alguma coisa, que é a mesma utilizada em col.rhs
 col.signs <- rep('>=', nrow(pop))
 col.rhs <- pop$pop
 
@@ -138,14 +140,16 @@ solution
 solution$solution
 solution$solution * cost.mat
 
-# Vemos que toda a população (demanda) foi atendida com matrículas (ofertas)
+# > solution
+# Success: the objective function is 292.4 
+# Vemos que o limite de vagas é respeitado, mas nem toda a população é atendida
 # > solution$solution
-# [,1] [,2] [,3]
+#      [,1] [,2] [,3]
 # [1,]    0    2   23
 # [2,]   21    0    0
 # [3,]   13   10    0
 # > solution$solution * cost.mat
-# 1    2    3
+#       1    2    3
 # 1   0.0 10.8 62.1
 # 2 113.4  0.0  0.0
 # 3  35.1 71.0  0.0
@@ -158,7 +162,7 @@ sum(pop$pop) - sum(solution$solution) # 0
 
 # Combinar origens e destinos para matrículas (oferta) >= população (demanda)
 solution$solution %>% 
-  as_tibble() %>%
+  as_tibble(.name_repair = 'unique') %>% 
   # Colunas são as origens (população / demanda)
   setNames(pop$orig) %>%
   # Inserir os destinos (matrículas / oferta) como linhas
@@ -166,8 +170,9 @@ solution$solution %>%
   # Combinar origens e destinos
   pivot_longer(-dest,
                names_to = 'orig',
-               values_to = 'pop_mat') %>%
+               values_to = 'viagens') %>%
   # Ordenar para facilitar a leitura
+  # select(orig, dest, viagens)
   select(2, 1, 3)
 
 
@@ -224,10 +229,12 @@ cost.mat
 direction <- 'min'
 
 # Aqui, as linhas são os hexágonos h3 resolução 09 com a POPULAÇÃO na faixa etária escolhida
+# ATENÇÃO: row.signs sempre é <= a alguma coisa, que é a mesma utilizada em row.rhs
 row.signs <- rep('<=', nrow(pop))
 row.rhs <- pop$pop
 
 # As colunas são os hexágonos h3 resolução 09 com as quantidades de MATRÍCULAS
+# ATENÇÃO: col.signs sempre é >= a alguma coisa, que é a mesma utilizada em col.rhs
 col.signs <- rep('>=', nrow(mat))
 col.rhs <- mat$mat
 
@@ -317,20 +324,17 @@ cost.mat
 # na matriz de custos) - se não for, vamos registrar e remover de cost.mat. Caso
 # seja possível chegar neles por alguma combinação (ou seja, o destino está
 # na matriz "custos", esses NA serão substituídos por valores proibitivos adiante
-destinos_impossiveis <- 
-  cost.mat %>% 
-  filter(is.na(time)) %>% 
-  select(dest) %>% 
-  distinct() %>% 
-  filter(!dest %in% custos$dest)
+destinos_na     <- cost.mat %>% filter(is.na(time)) %>% select(dest) %>% distinct()
+destinos_nao_na <- cost.mat %>% filter(!is.na(time)) %>% select(dest) %>% distinct()
+destinos_impossiveis <- destinos_na %>% filter(!dest %in% destinos_nao_na$dest)
+
+# destinos_impossiveis %>% summarise(this = toString(dest)) %>% pull()
+# custos %>% filter(dest %in% destinos_impossiveis$dest)
 
 # De forma similar, o mesmo acontece com as origens - detectar as isoladas
-origens_impossiveis <- 
-  cost.mat %>% 
-  filter(is.na(time)) %>% 
-  select(orig) %>% 
-  distinct() %>% 
-  filter(!orig %in% custos$orig)
+origens_na     <- cost.mat %>% filter(is.na(time)) %>% select(orig) %>% distinct()
+origens_nao_na <- cost.mat %>% filter(!is.na(time)) %>% select(orig) %>% distinct()
+origens_impossiveis <- origens_na %>% filter(!orig %in% origens_nao_na$orig) %>% filter(!orig %in% custos$orig)
 
 
 # Remover destinos e origens impossíveis, caso existam
@@ -340,6 +344,9 @@ cost.mat <- cost.mat %>% filter(!orig %in% origens_impossiveis$orig)
 # Atualizar dataframes de matrículas (destinos) e população (origens)
 mat <- mat %>% filter(!dest %in% destinos_impossiveis$dest)
 pop <- pop %>% filter(!orig %in% origens_impossiveis$orig)
+
+# Registrar combinações de pares OD válidos (tempo até o limite estabelecido)
+pares_OD_validos <- cost.mat %>% filter(!is.na(time))
 
 # Como fica a relação entre demanda e oferta?
 print(sprintf('População: %s; Matrículas: %s; Diferença: %s', sum(pop$pop), sum(mat$mat), sum(pop$pop) - sum(mat$mat)))
@@ -373,10 +380,12 @@ cost.mat
 direction <- 'min'
 
 # Aqui, as linhas são os hexágonos h3 resolução 09 com a POPULAÇÃO na faixa etária escolhida
+# ATENÇÃO: row.signs sempre é <= a alguma coisa, que é a mesma utilizada em row.rhs
 row.signs <- rep('<=', nrow(pop))
 row.rhs <- pop$pop
 
 # As colunas são os hexágonos h3 resolução 09 com as quantidades de MATRÍCULAS
+# ATENÇÃO: col.signs sempre é >= a alguma coisa, que é a mesma utilizada em col.rhs
 col.signs <- rep('>=', nrow(mat))
 col.rhs <- mat$mat
 
@@ -418,7 +427,7 @@ sum(pop$pop) - sum(solution$solution) # 5
 # Combinar origens e destinos para população (demanda) > matrículas (oferta)
 resultados <- 
   solution$solution %>% 
-  as_tibble() %>%
+  as_tibble(.name_repair = 'unique') %>%
   # Colunas são os destinos (matrículas / oferta)
   setNames(reg_colunas$dest) %>%
   # Inserir as origens (população / demanda) como linhas

@@ -8,17 +8,16 @@ library('tidyverse')
 library('tidylog')
 
 # Definir ano e limites de tempo para ttmatrix final
-# ano <- '2019'; min_thres <- 40; sec_thres <- min_thres * 60
-ano <- '2028'; min_thres <- 40; sec_thres <- min_thres * 60
+# ano <- '2019'; min_thres <- 15; sec_thres <- min_thres * 60
+ano <- '2028'; min_thres <- 15; sec_thres <- min_thres * 60
 
 # Estrutura de pastas
 pasta_dados       <- "../../yellow_dados"
 pasta_aop_rev     <- sprintf("%s/12_aop_revisitado", pasta_dados)
 pasta_aoprv_alter <- sprintf("%s/03_alternatives_2019_2028", pasta_aop_rev)
 pasta_aop_optimum <- sprintf("%s/13_aop_optimum", pasta_dados)
-pasta_opaop_ano   <- sprintf("%s/%s", pasta_aop_optimum, ano)
-dir.create(pasta_aop_optimum, recursive = TRUE, showWarnings = FALSE)
-dir.create(pasta_opaop_ano, recursive = TRUE, showWarnings = FALSE)
+pasta_opaop_ttmat <- sprintf("%s/01_ttmatrix", pasta_aop_optimum, ano)
+dir.create(pasta_opaop_ttmat, recursive = TRUE, showWarnings = TRUE)
 
 
 # ------------------------------------------------------------------------------
@@ -33,8 +32,10 @@ if (ano == '2019') {
   tt_ini_vias_ciclos  <- sprintf("%s/06_tmp_ttmatrix_%s_rotas_infra_ciclo.csv", pasta_aoprv_alter, ano)
 }
 
-tt_ini_vias_comuns <- read_delim(tt_ini_vias_comuns, delim = ';', col_types = 'cidddddddddc') %>% distinct()
-tt_ini_vias_ciclos <- read_delim(tt_ini_vias_ciclos, delim = ';', col_types = 'cidddddddddc') %>% distinct()
+tt_ini_vias_comuns <- read_delim(tt_ini_vias_comuns, delim = ';', col_types = 'cidddddddddc')
+tt_ini_vias_comuns <- tt_ini_vias_comuns %>% distinct() %>% filter(!is.na(hex_id))
+tt_ini_vias_ciclos <- read_delim(tt_ini_vias_ciclos, delim = ';', col_types = 'cidddddddddc')
+tt_ini_vias_ciclos <- tt_ini_vias_ciclos %>% distinct() %>% filter(!is.na(hex_id))
 
 
 # ------------------------------------------------------------------------------
@@ -97,8 +98,6 @@ gc(T)
 # totais reajustados, o filtro por limite máximo de tempo precisa ser refeito
 
 # Filtrar pelo limite de tempo, considerando a coluna time_adj
-# 2019: filter: removed 175,115 rows (2%), 10,686,074 rows remaining
-# 2028: filter: removed 175,015 rows (1%), 12,222,517 rows remaining
 ttmatrix <- ttmatrix %>% filter(time_adj <= sec_thres)
 
 
@@ -110,47 +109,51 @@ ttmatrix <- ttmatrix %>% filter(time_adj <= sec_thres)
 # a com mais uso de infra cicloviária - primeiro descobrir quais são...
 alt_nao_unica <- ttmatrix %>% group_by(hex_id) %>% tally() %>% filter(n > 1) %>% ungroup()
 # ... depois, filtrar do ttmatrix
-# 2019: filter: removed 1,456,911 rows (14%), 9,229,163 rows remaining
-# 2028: filter: removed 1,322,970 rows (11%), 10,899,547 rows remaining
+# 2019 (15 min): filter: removed 438,315 rows (39%), 697,948 rows remaining
+# 2028 (15 min): filter: removed 437,574 rows (33%), 891,673 rows remaining
 alt_nao_unica <- ttmatrix %>% filter(hex_id %in% alt_nao_unica$hex_id)
 
 # Por contraposição, isolar as rotas que só têm 1 alternativa
-# 2019: filter: removed 9,229,163 rows (86%), 1,456,911 rows remaining
-# 2028: filter: removed 10,899,547 rows (89%), 1,322,970 rows remaining
+# 2019 (15 min): filter: removed 697,948 rows (61%), 438,315 rows remaining
+# 2028 (15 min): filter: removed 891,673 rows (67%), 437,574 rows remaining
 alt_unica <- ttmatrix %>% filter(!hex_id %in% alt_nao_unica$hex_id)
 # nrow(alt_nao_unica) + nrow(alt_unica) == nrow(rotas)
 
 # Guardar qual o tamanho que o dataframe de alternativas não únicas tem que ter
 # após selecionada uma única alternativa, das existentes
-# 2019: 4,944,931
-# 2028: 5,359,063
+# 2019 (15 min): 734,631
+# 2028 (15 min): 809,403
 qtd_linhas_final <- ttmatrix %>% select(hex_id) %>% distinct() %>% nrow()
-# 2019: 3,488,020
-# 2028: 4,036,093
+# 2019 (15 min): 296,316
+# 2028 (15 min): 371,829
 faltam_linhas <- qtd_linhas_final - nrow(alt_unica)
+
+# Limpar ambiente antes de continuar
+rm(ttmatrix)
+gc(T)
 
 
 # Tentar puxar a rota que usa maior extensão percorrida em infra cicloviário
-# 2019: filter (grouped): removed 4,153,521 rows (45%), 5,075,642 rows remaining
-# 2028: filter (grouped): removed 6,846,500 rows (63%), 4,053,047 rows remaining
+# 2019 (15 min): filter (grouped): removed 173,184 rows (25%), 524,764 rows remaining
+# 2028 (15 min): filter (grouped): removed 502,260 rows (56%), 389,413 rows remaining
 alt_nao_unica <- alt_nao_unica %>% group_by(hex_id) %>% filter(infra_ciclo == max(infra_ciclo))
 # Se ainda houver empate, pegar a de menor tempo
 if (nrow(alt_nao_unica) > faltam_linhas) {
-  # 2019: filter (grouped): removed 1,587,617 rows (31%), 3,488,025 rows remaining
-  # 2028: filter (grouped): removed 16,954 rows (<1%), 4,036,093 rows remaining
+  # 2019 (15 min): filter (grouped): removed 228,448 rows (44%), 296,316 rows remaining
+  # 2028 (15 min): filter (grouped): removed 17,584 rows (5%), 371,829 rows remaining
   alt_nao_unica <- alt_nao_unica %>% filter(time_adj == min(time_adj))
 }
 # Se ainda houver empate, pegar a de menor distância
 if (nrow(alt_nao_unica) > faltam_linhas) {
-  # 2019: filter (grouped): removed 5 rows (<1%), 3,488,020 rows remaining
-  # 2028: NA
+  # 2019 (15 min): NA
+  # 2028 (15 min): NA
   alt_nao_unica <- alt_nao_unica %>% filter(distance == min(distance))
 }
 # Se ainda houver empate, pegar a primeira alternativa
 # alt_nao_unica %>% group_by(hex_id) %>% tally() %>% filter(n > 1)
 if (nrow(alt_nao_unica) > faltam_linhas) {
-  # 2019: NA
-  # 2028: NA
+  # 2019 (15 min): NA
+  # 2028 (15 min): NA
   alt_nao_unica <- alt_nao_unica %>% filter(alt == min(alt))
 }
 alt_nao_unica <- alt_nao_unica %>% ungroup()
@@ -163,10 +166,14 @@ ttmatrix_final <- rbind(alt_unica, alt_nao_unica) %>% arrange(hex_id)
 # ttmatrix_final %>% filter(time_dif > 0) %>% sample_n(20)
 
 
-# # Gravar resultados
-# out_file <- sprintf('%s/01_ttmatrix_%s_res09_%smin.csv', pasta_opaop_ano, ano, min_thres)
-# write_delim(ttmatrix_final, out_file, delim = ';')
+# Gravar resultados
+out_file <- sprintf('%s/ttmatrix_%s_res09_%smin.csv', pasta_opaop_ttmat, ano, min_thres)
+write_delim(ttmatrix_final, out_file, delim = ';')
 
+
+# # Limpar ambiente
+# rm(alt_unica, alt_nao_unica)
+# gc(T)
 
 
 # ------------------------------------------------------------------------------
@@ -177,21 +184,24 @@ ttmatrix_final <- rbind(alt_unica, alt_nao_unica) %>% arrange(hex_id)
 # que foi a origem do routing (contém o id e a URL para o routing), a seguir
 
 # # Abrir resultado da ttmatrix sem dados de latlon
-# out_file <- sprintf('%s/01_ttmatrix_%s_res09_%smin.csv', pasta_opaop_ano, ano, min_thres)
+# out_file <- sprintf('%s/01_ttmatrix_%s_res09_%smin.csv', pasta_opaop_ttmat, ano, min_thres)
 # ttmatrix_final <- read_delim(out_file, delim = ';', col_types = 'cidddddddddc')
-
-# Abrir dados de hexágonos - vamos reconstituir latlon x e y em ttmatrix_rotas_ciclo
-hex_com_vizinhos <- sprintf('%s/00_base_para_routing_res09_26vizinhos.csv', pasta_aoprv_alter)
-hex_com_vizinhos <- read_delim(hex_com_vizinhos, 
-                               delim = ';', 
-                               col_select = c('id', 'lat.x', 'lon.x', 'lat.y', 'lon.y'), 
-                               col_types = 'cdddd')
-
-
-# Juntar dados de latlon à ttmatrix final
-ttmatrix_final <- ttmatrix_final %>% left_join(hex_com_vizinhos, by = c('hex_id' = 'id'))
-
-
-# Gravar resultados
-out_file <- sprintf('%s/01_ttmatrix_%s_res09_%smin.csv', pasta_opaop_ano, ano, min_thres)
-write_delim(ttmatrix_final, out_file, delim = ';')
+# 
+# # Abrir dados de hexágonos - vamos reconstituir latlon x e y em ttmatrix_rotas_ciclo
+# hex_com_vizinhos <- sprintf('%s/00_base_para_routing_res09_26vizinhos.csv', pasta_aoprv_alter)
+# hex_com_vizinhos <- read_delim(hex_com_vizinhos, delim = ';', col_types = 'cc')
+# 
+# hex_com_vizinhos <- 
+#   hex_com_vizinhos %>% 
+#   mutate(url = str_extract(url, '-23.[0-9]*%2C-46.[0-9]*&point=-23.[0-9]*%2C-46.[0-9]*')) %>% 
+#   mutate(url = str_replace_all(url, '&point=|%2C', ',')) %>%
+#   separate(url, into = c('lat.x', 'lon.x', 'lat.y', 'lon.y'), sep = ',')
+# 
+# 
+# # Juntar dados de latlon à ttmatrix final
+# ttmatrix_final <- ttmatrix_final %>% left_join(hex_com_vizinhos, by = c('hex_id' = 'id'))
+# 
+# 
+# # Gravar resultados
+# out_file <- sprintf('%s/01_ttmatrix_%s_res09_%smin.csv', pasta_opaop_ttmat, ano, min_thres)
+# write_delim(ttmatrix_final, out_file, delim = ';')

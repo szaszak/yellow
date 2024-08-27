@@ -17,11 +17,11 @@ dir.create(pasta_aoprv_alter, recursive = TRUE, showWarnings = FALSE)
 # ------------------------------------------------------------------------------
 
 # Abrir hexágonos para SP à resolução 9, com distância de ~350m entre os vértices
-hex_sp <- read_sf(sprintf("%s/aop_hex_grid_v2.gpkg", dados_originais))
-hex_sp <- hex_sp %>% filter(abbrev_muni == 'spo') %>% select(-c(abbrev_muni, name_muni, code_muni))
+hex_sp_orig <- read_sf(sprintf("%s/aop_hex_grid_v2.gpkg", dados_originais))
+hex_sp_orig <- hex_sp_orig %>% filter(abbrev_muni == 'spo') %>% select(-c(abbrev_muni, name_muni, code_muni))
 
 # Tratar como dataframe e selecionar somente colunas de interesse
-hex_sp <- st_centroid(hex_sp) %>% mutate(centroides = as.character(geom)) %>% st_drop_geometry()
+hex_sp <- st_centroid(hex_sp_orig) %>% mutate(centroides = as.character(geom)) %>% st_drop_geometry()
 
 # Oportunidades por hexágono
 # https://ipeagit.github.io/aopdata/reference/read_landuse.html
@@ -42,13 +42,17 @@ dados_ipea_pop <- dados_ipea_pop %>% select(id_hex, populacao = P001)
 head(dados_ipea_pop)
 
 # Juntar dados de oportunidades e população
-hex_sp <- 
+hex_ipea <- 
   hex_sp %>% 
   left_join(dados_ipea, by = 'id_hex') %>% 
   left_join(dados_ipea_pop, by = 'id_hex')
 
 # Hexágonos IPEA sem oportunidade ou sem população devem ser descartados
-hex_ipea <- hex_sp %>% filter(oportunidades > 0 | populacao > 0)
+# ATENÇÃO: Este filtro não pode acontecer, porque vamos usar dados do CENSO e de
+# matrículas adiante que vão estar em hexágonos diferentes dos do IPEA. Se esse
+# filtro for feito aqui, alguns hexágonos vão sumir e não entrarão como par OD
+# no routing
+# hex_ipea <- hex_ipea %>% filter(oportunidades > 0 | populacao > 0)
 
 # Limpar ambiente
 rm(dados_ipea, dados_ipea_pop)
@@ -69,6 +73,7 @@ pasta_aop_optimum <- sprintf("%s/13_aop_optimum", pasta_dados)
 # Demanda: quantidade de pessoas por hexágono
 pop <- sprintf('%s/hex_grid_sp_res09_dados_censo_por_hexagono.csv', pasta_aop_optimum)
 pop <- read_delim(pop, delim = ';', col_types = cols(.default = "c"))
+# pop %>% filter(!id_hex %in% hex_sp$id_hex)
 pop <- pop %>% mutate_at(2:ncol(.), as.numeric)
 # Garantir que haja população
 pop <- pop %>% filter(pop_res2_hex > 0)
@@ -80,6 +85,7 @@ head(pop)
 # Oferta: quantidade de matrículas por hexágono
 mat <- sprintf('%s/matriculas_censo_escolar_2019_por_hexagono.csv', pasta_aop_optimum)
 mat <- read_delim(mat, delim = ';', col_types = cols(.default = "c"))
+# mat %>% filter(!id_hex %in% hex_sp$id_hex)
 mat <- mat %>% mutate_at(2:ncol(.), as.numeric)
 # Garantir que haja matrículas
 mat <- mat %>% filter(matriculas_ensino_medio > 0 | matriculas_idades_15_17 > 0)
@@ -88,56 +94,99 @@ mat <- mat %>% filter(matriculas_ensino_medio > 0 | matriculas_idades_15_17 > 0)
 head(mat)
 
 
-# Hexágonos calculados com população e que ainda não estão nos hexágonos do IPEA
-hex_calc_pop <- hex_sp %>% filter(id_hex %in% pop$id_hex & !id_hex %in% hex_ipea$id_hex)
-
-# Hexágonos calculados com escolas e que ainda não estão nos hexágonos do IPEA
-hex_calc_esc <- hex_sp %>% filter(id_hex %in% mat$id_hex & !id_hex %in% hex_ipea$id_hex)
-
-
 # Puxar hexágonos de população e matrículas que não estão na grade do IPEA
 
+# Hexágonos calculados com população e que ainda não estão nos hexágonos do IPEA
+# ATENÇÃO: da forma como estava sendo feito antes, hexágonos que no IPEA possuíam
+# oportunidades mas não população (ex. 89a810008b7ffff), mas que nos dados do
+# CENSO possuíam população (proporcional, calculada para o hexágono) não iriam
+# entrar pois já estão na base do IPEA. Com isso, não seriam consideradas como 
+# origem. Lá na frente, no script do lpSolve, cerca de 3.200 hexágonos podem
+# estar nessa situação
+# hex_calc_pop <- hex_sp %>% filter(id_hex %in% pop$id_hex & !id_hex %in% hex_ipea$id_hex)
+# hex_calc_pop <- pop %>% filter(!id_hex %in% hex_ipea$id_hex)
+
+# # Dos hexágonos calculados, quais possuem população e oportunidades (são origens e destinos)
+# hex_calc_pop_op <- rbind(hex_calc_pop, hex_calc_esc) %>% group_by(id_hex) %>% tally() %>% filter(n > 1)
+# hex_calc_pop_op <- hex_sp %>% filter(id_hex %in% hex_calc_pop_op$id_hex)
+# 
+# # Dos hexágonos calculados, quais possuem somente população (são só origens)
+# hex_calc_so_pop <- hex_calc_pop %>% filter(!id_hex %in% hex_calc_pop_op$id_hex)
+# hex_calc_so_pop <- hex_sp %>% filter(id_hex %in% hex_calc_so_pop$id_hex)
+# 
+# # Dos hexágonos calculados, quais possuem somente escolas (são só destinos)
+# hex_calc_so_op <- hex_calc_esc %>% filter(!id_hex %in% hex_calc_pop_op$id_hex)
+# hex_calc_so_op <- hex_sp %>% filter(id_hex %in% hex_calc_so_op$id_hex)
+# 
+# 
+# # Juntar com hexágonos do IPEA
+# 
+# # Hexágono contém população e oportunidades (são origens e destinos)
+# hex_pop_op <- 
+#   hex_ipea %>% 
+#   filter(oportunidades > 0 & populacao > 0) %>% 
+#   rbind(hex_calc_pop_op) %>% 
+#   distinct()
+# 
+# # Hexágono contém somente população (são só origens)
+# hex_so_pop <- 
+#   hex_ipea %>% 
+#   filter(oportunidades == 0 & populacao > 0) %>% 
+#   rbind(hex_calc_so_pop) %>% 
+#   distinct()
+# 
+# # Hexágono contém somente oportunidades (são só destinos)
+# hex_so_op <- 
+#   hex_ipea %>% 
+#   filter(oportunidades > 0 & populacao == 0) %>% 
+#   rbind(hex_calc_so_op) %>% 
+#   distinct()
+# 
+# 
+# # Limpar ambiente
+# rm(hex_ipea, pop, mat, hex_calc_pop, hex_calc_esc, 
+#    hex_calc_pop_op, hex_calc_so_pop, hex_calc_so_op,
+#    pasta_aop_optimum)
+
+
+# # Somar populações das duas fontes, só para demarcar hexágonos a serem considerados
+# como origens
+hex_ipea <- hex_ipea %>% left_join(pop, by = 'id_hex') %>% mutate(pop_marker = populacao + pop)
+
+# Hexágonos calculados com escolas e que ainda não estão nos hexágonos do IPEA
+# hex_calc_esc <- hex_sp %>% filter(id_hex %in% mat$id_hex & !id_hex %in% hex_ipea$id_hex)
+# hex_calc_esc <- mat %>% filter(!id_hex %in% hex_ipea$id_hex)
+hex_ipea <- 
+  hex_ipea %>% 
+  left_join(mat, by = 'id_hex') %>% 
+  mutate(across(where(is.numeric), ~replace_na(.x, 0))) %>%
+  # Somar oportunidades e matrículas, só para demarcar hexágonos a serem considerados
+  # como destinos
+  mutate(op_marker = oportunidades + matriculas_ensino_medio + matriculas_idades_15_17)
+
 # Dos hexágonos calculados, quais possuem população e oportunidades (são origens e destinos)
-hex_calc_pop_op <- rbind(hex_calc_pop, hex_calc_esc) %>% group_by(id_hex) %>% tally() %>% filter(n > 1)
-hex_calc_pop_op <- hex_sp %>% filter(id_hex %in% hex_calc_pop_op$id_hex)
+hex_pop_op <- hex_ipea %>% filter(pop_marker > 0 & op_marker > 0)
 
 # Dos hexágonos calculados, quais possuem somente população (são só origens)
-hex_calc_so_pop <- hex_calc_pop %>% filter(!id_hex %in% hex_calc_pop_op$id_hex)
-hex_calc_so_pop <- hex_sp %>% filter(id_hex %in% hex_calc_so_pop$id_hex)
+hex_so_pop <- hex_ipea %>% filter(pop_marker > 0 & op_marker == 0)
 
 # Dos hexágonos calculados, quais possuem somente escolas (são só destinos)
-hex_calc_so_op <- hex_calc_esc %>% filter(!id_hex %in% hex_calc_pop_op$id_hex)
-hex_calc_so_op <- hex_sp %>% filter(id_hex %in% hex_calc_so_op$id_hex)
+hex_so_op  <- hex_ipea %>% filter(pop_marker == 0 & op_marker > 0)
+
+# Dos hexágonos calculados, quais não possuem oportunidades ou população?
+hex_zero   <- hex_ipea %>% filter(pop_marker == 0 & op_marker == 0)
+
+# nrow(hex_ipea) ==  nrow(hex_pop_op) + nrow(hex_so_pop) + nrow(hex_so_op) + nrow(hex_zero)
 
 
-# Juntar com hexágonos do IPEA
-
-# Hexágono contém população e oportunidades (são origens e destinos)
-hex_pop_op <- 
-  hex_ipea %>% 
-  filter(oportunidades > 0 & populacao > 0) %>% 
-  rbind(hex_calc_pop_op) %>% 
-  distinct()
-
-# Hexágono contém somente população (são só origens)
-hex_so_pop <- 
-  hex_ipea %>% 
-  filter(oportunidades == 0 & populacao > 0) %>% 
-  rbind(hex_calc_so_pop) %>% 
-  distinct()
-
-# Hexágono contém somente oportunidades (são só destinos)
-hex_so_op <- 
-  hex_ipea %>% 
-  filter(oportunidades > 0 & populacao == 0) %>% 
-  rbind(hex_calc_so_op) %>% 
-  distinct()
-
+# Gravar hexágonos que possuem alguma população ou oportunidade
+hex_sp_orig <- hex_sp_orig %>% left_join(hex_ipea, by = 'id_hex') %>% select(-centroides)
+# hex_sp_orig <- hex_sp_orig %>% filter(id_hex %in% hex_pop_op$id_hex | id_hex %in% hex_so_pop$id_hex | id_hex %in% hex_so_op$id_hex)
+out_hex_considerados <- sprintf('%s/tmp_sao_paulo_hexagonos_populacao_oportunidades.gpkg', pasta_aoprv_alter)
+st_write(hex_sp_orig, out_hex_considerados, driver = 'GPKG', append = FALSE)
 
 # Limpar ambiente
-rm(hex_ipea, pop, mat, hex_calc_pop, hex_calc_esc, 
-   hex_calc_pop_op, hex_calc_so_pop, hex_calc_so_op,
-   pasta_aop_optimum)
+rm(hex_ipea, pop, mat, hex_zero, pasta_aop_optimum, hex_sp_orig, out_hex_considerados)
 
 
 # ------------------------------------------------------------------------------
@@ -154,6 +203,17 @@ hex_sp <-
 # Abrir hexágonos para SP combinados com vizinhos
 hex_com_vizinhos <- sprintf("%s/hex_spo_res09_26vizinhos.csv", pasta_aoprev_hex)
 hex_com_vizinhos <- read_delim(hex_com_vizinhos, delim = ';', col_types = cols(.default = "c"))
+head(hex_com_vizinhos)
+
+# # Por que origem com 62 pessoas não chega a um hexágono do lado com 386 matrículas?
+# hex_com_vizinhos %>% filter(id_hex_x == '89a81039c77ffff' & id_hex_y == '89a81039c63ffff')
+# Origem está nos hexágonos só com população
+# hex_so_pop %>% filter(id_hex == '89a81039c77ffff')
+# Destino está nos hexágonos com população e oportunidades
+# hex_pop_op %>% filter(id_hex == '89a81039c63ffff')
+# # Por que 10 pessoas 'morando' no cemitério do Campo Grande e que não chegam 
+# a 142 vagas do outro lado da rua?
+# hex_com_vizinhos %>% filter(id_hex_x == '89a810008b7ffff' & id_hex_y == '89a81000d7bffff')
 
 # Gerar hexágonos de origem e destino para routing, em que os hexágonos de origem
 # necessariamente possuam população e os de destino possuam oportunidades
@@ -162,7 +222,10 @@ hex_com_vizinhos <-
   # Origens precisam conter população, ou seja, precisam estar em hex_pop_op ou hex_so_pop
   filter(id_hex_x %in% hex_pop_op$id_hex | id_hex_x %in% hex_so_pop$id_hex) %>%
   # Destinos precisam conter oportunidades, ou seja, precisam estar em hex_pop_op ou hex_so_op
-  filter(id_hex_x %in% hex_pop_op$id_hex | id_hex_x %in% hex_so_op$id_hex) %>%
+  filter(id_hex_y %in% hex_pop_op$id_hex | id_hex_y %in% hex_so_op$id_hex) %>%
+  # Checar se par de hexágonos que havia 'sumido' permanece no filtro - ok. Erro
+  # estava na linha acima, em que filtro era id_hex_x em vez de id_hex_y
+  # filter(id_hex_x == '89a81039c77ffff' & id_hex_y == '89a81039c63ffff')
   # Juntar hexágonos de origem e destino às cordenadas latlong de seus centroides
   left_join(hex_sp, by = c('id_hex_x' = 'id_hex')) %>%
   left_join(hex_sp, by = c('id_hex_y' = 'id_hex'))
@@ -173,7 +236,7 @@ hex_com_vizinhos <- hex_com_vizinhos %>% drop_na()
 
 # Método anterior, que considerava todos os hexágonos como origem e destino possíveis: 
 # 10.911.566 / 1.267.988 = 8.6 vezes as queries com resolução 8
-# Agora, incluindo mais uns 6 mil hexágonos: 13,851,772 rows remaining
+# Agora, incluindo mais uns 6 mil hexágonos: 13,694,545 rows remaining
 nrow(hex_com_vizinhos)
 
 # Limpar ambiente
@@ -203,6 +266,7 @@ head(hex_com_vizinhos)
 
 # Guardar resultados - base integral
 out_file <- sprintf('%s/00_base_para_routing_res09_26vizinhos.csv', pasta_aoprv_alter)
+if (file.exists(out_file)) { file.rename(from = out_file, to = sprintf('%s_BKP_APAGAR', out_file)) }
 write_delim(hex_com_vizinhos, out_file, delim = ';')
 
 
@@ -210,7 +274,7 @@ write_delim(hex_com_vizinhos, out_file, delim = ';')
 # Dividir resultados para processamento - fazer para 2019 e, depois, 2028
 # ------------------------------------------------------------------------------
 
-# # ano <- '2019'
+# ano <- '2019'
 ano <- '2028'
 
 # # Criar base de ids já processados, caso ainda não exista
@@ -260,6 +324,10 @@ hex_com_vizinhos <- read_delim(hex_com_vizinhos, delim = ';', col_types = cols(.
 # nrow(hex_com_vizinhos) # 10.911.566; agora 13,851,772
 head(hex_com_vizinhos)
 
+# Hexágono que estava com problema agora está na base? Sim
+# hex_com_vizinhos %>% filter(id == '89a81039c77ffff-89a81039c63ffff')
+
+
 # Checar quais resultados já foram rodados - abrir lista, puxar ids e remover
 # do dataframe hex_com_vizinhos se houver
 # library('tidylog')
@@ -270,6 +338,10 @@ if (file.exists(ids_processados)) {
   
   # Remover ids já processados
   hex_com_vizinhos <- hex_com_vizinhos %>% filter(!id %in% ids_processados$hex_id)
+  
+  # # Por que 10 pessoas 'morando' no cemitério do Campo Grande e que não chegam 
+  # a 142 vagas do outro lado da rua?
+  # hex_com_vizinhos %>% filter(id == '89a810008b7ffff-89a81000d7bffff')
 }
 rm(ids_processados, ano)
 

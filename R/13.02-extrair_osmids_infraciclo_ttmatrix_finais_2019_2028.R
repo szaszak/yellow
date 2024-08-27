@@ -7,15 +7,16 @@ library('tidyverse')
 library('tidylog')
 
 # Definir ano e limites de tempo para ttmatrix final
-# ano <- '2019'; min_thres <- 30;
-ano <- '2028'; min_thres <- 40;
+# ano <- '2019'; min_thres <- 15;
+ano <- '2028'; min_thres <- 15;
 
 # Estrutura de pastas
 pasta_ssd         <- "/media/livre/SSD120GB/yellow"
 pasta_dados       <- "../../yellow_dados"
+pasta_aop_rev     <- sprintf("%s/12_aop_revisitado", pasta_dados)
+pasta_aoprv_alter <- sprintf("%s/03_alternatives_2019_2028", pasta_aop_rev)
 pasta_aop_optimum <- sprintf("%s/13_aop_optimum", pasta_dados)
-pasta_opaop_ano   <- sprintf("%s/%s", pasta_aop_optimum, ano)
-
+pasta_opaop_ttmat <- sprintf("%s/01_ttmatrix", pasta_aop_optimum, ano)
 
 if (ano == '2019') {
   pasta_tmp_osmids  <- sprintf("%s/E_%s_osm_way_ids_tmp_40_min", pasta_ssd, ano)
@@ -29,7 +30,7 @@ if (ano == '2019') {
 # ------------------------------------------------------------------------------
 
 # Abrir ttmatrix final
-ttmatrix_final <- sprintf('%s/01_ttmatrix_%s_res09_%smin.csv', pasta_opaop_ano, ano, min_thres)
+ttmatrix_final <- sprintf('%s/ttmatrix_%s_res09_%smin.csv', pasta_opaop_ttmat, ano, min_thres)
 ttmatrix_final <- read_delim(ttmatrix_final, 
                              delim = ';', 
                              col_select = c('hex_id', 'alt', 'infra_ciclo'), 
@@ -49,7 +50,7 @@ ids_ttmatrix_final <-
 osmid_files <- data.frame(arqs = list.files(pasta_tmp_osmids, recursive = FALSE, full.names = TRUE))
 
 # Gravar resultados
-out_file <- sprintf('%s/02_osm_ids_ttmatrix_%s_res09_%smin.csv', pasta_opaop_ano, ano, min_thres)
+out_file <- sprintf('%s/ttmatrix_osmids_%s_res09_%smin.csv', pasta_opaop_ttmat, ano, min_thres)
 
 # Como a pasta de arquivos para 2028 é enorme, abrir um por um e filtrar - ficam
 # somente os osm_ids que fazem parte das rotas presentes na ttmatrix_final

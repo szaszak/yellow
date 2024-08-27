@@ -15,6 +15,7 @@ dados_originais   <- sprintf("%s/00_dados_originais", pasta_dados)
 pasta_inep        <- sprintf("%s/INEP", dados_originais)
 pasta_ipea        <- sprintf("%s/IPEA", dados_originais)
 pasta_aop_optimum <- sprintf("%s/13_aop_optimum", pasta_dados)
+pasta_opaop_dados <- sprintf("%s/02_dados_pop_mat", pasta_aop_optimum)
 
 
 # ------------------------------------------------------------------------------
@@ -384,5 +385,5 @@ matriculas <-
 
 
 # Gravar resultados
-out_file <- sprintf('%s/matriculas_censo_escolar_2019_georref.gpkg', pasta_aop_optimum)
+out_file <- sprintf('%s/matriculas_censo_escolar_2019_georref.gpkg', pasta_opaop_dados)
 st_write(matriculas, out_file, driver = 'GPKG', append = FALSE)

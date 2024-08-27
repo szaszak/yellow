@@ -97,6 +97,7 @@ dados_originais   <- sprintf("%s/00_dados_originais", pasta_dados)
 pasta_censo       <- sprintf("%s/CENSO", dados_originais)
 pasta_ipea        <- sprintf("%s/IPEA", dados_originais)
 pasta_aop_optimum <- sprintf("%s/13_aop_optimum", pasta_dados)
+pasta_opaop_dados <- sprintf("%s/02_dados_pop_mat", pasta_aop_optimum)
 
 
 # ------------------------------------------------------------------------------
@@ -426,7 +427,7 @@ censo <- censo %>% select(cod_setor = Cod_setor, 7:17)
 
 
 # Abrir shapefile de setores censitários
-setores_hex <- sprintf('%s/hex_grid_sp_res09_areas_setores_censitarios.gpkg', pasta_aop_optimum)
+setores_hex <- sprintf('%s/hex_grid_sp_res09_areas_setores_censitarios.gpkg', pasta_opaop_dados)
 setores_hex <- read_sf(setores_hex)
 
 # Garantir que shapefile não apresente erros
@@ -471,5 +472,5 @@ censo_hex <-
 # sum(censo$pessoas_06_08) - sum(censo_hex$pessoas_06_08_hex)
 
 # Gravar resultados
-out_file <- sprintf('%s/hex_grid_sp_res09_dados_censo_por_hexagono.csv', pasta_aop_optimum)
+out_file <- sprintf('%s/hex_grid_sp_res09_dados_censo_por_hexagono.csv', pasta_opaop_dados)
 write_delim(censo_hex, out_file, delim = ';')

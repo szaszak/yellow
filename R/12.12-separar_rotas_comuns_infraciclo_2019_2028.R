@@ -5,8 +5,8 @@
 # carregar bibliotecas
 source('fun/setup.R')
 
-
 # Estrutura de pastas
+pasta_ssd         <- "/media/livre/SSD120GB/yellow"
 pasta_dados       <- "../../yellow_dados"
 pasta_osm_sp      <- sprintf("%s/02_osm_simplificado_sp", pasta_dados)
 pasta_graphhopper <- sprintf("%s/07_graphhopper", pasta_dados)
@@ -14,13 +14,10 @@ pasta_gh_pbfs     <- sprintf("%s/03_PBFs_SP_rede_2019", pasta_graphhopper)
 pasta_aop_rev     <- sprintf("%s/12_aop_revisitado", pasta_dados)
 pasta_aoprv_alter <- sprintf("%s/03_alternatives_2019_2028", pasta_aop_rev)
 pasta_ids_aopt_19 <- sprintf("%s/A_2019_osm_way_ids_aop", pasta_aoprv_alter)
-# pasta_rts_aopt_19 <- sprintf("%s/B_2019_rotas_modeladas_alternatives", pasta_aoprv_alter)
 pasta_ids_aopt_28 <- sprintf("%s/C_2028_osm_way_ids_aop", pasta_aoprv_alter)
-# pasta_rts_aopt_28 <- sprintf("%s/D_2028_rotas_modeladas_alternatives", pasta_aoprv_alter)
 
-ano <- '2019'
-# ano <- '2028'
-
+# ano <- '2019'
+ano <- '2028'
 
 
 # ------------------------------------------------------------------------------
@@ -62,6 +59,14 @@ if (ano == '2028') {
   
   # Abrir shape com a marcação da rede cicloviária de referência
   ciclo_futura <- sprintf('%s/sao_paulo_osm_filtrado_com_qgis_id_redes_cicloviarias_2019_2028.gpkg', pasta_graphhopper)
+  
+  # ATENÇÃO: O shapefile acima é o que melhor detém a rede de referência transposta
+  # para o viário do OSM. Porém, há casos em que o mesmo osm_id traz trechos da
+  # rede futura mas também trechos que não pertençam a ela. Ver, por exemplo, o
+  # osm_id 264984110, que tem 8,06 metros de rede de referência dentre os seus
+  # 818,49 metros de viário. Esse filtro será revisto mais 'a frente, no script
+  # 13.09, mas poderia ser tratado aqui já.
+  
   ciclo_futura <- read_sf(ciclo_futura) %>% filter(rede_cicloviaria == 'referencia')
   # mapview(ciclo_futura)
   ciclo_futura <- ciclo_futura %>% st_drop_geometry() %>% select(osm_id) %>% distinct()
@@ -93,7 +98,7 @@ gc(T)
 
 
 # ------------------------------------------------------------------------------
-# Identificar rotas passaram ou não por infra cicloviária - leva cerca de 3h30
+# Identificar rotas passaram ou não por infra cicloviária - leva cerca de 4h
 # ------------------------------------------------------------------------------
 
 # Abrir base de rotas com alternativas, resultado do routing via GrahHopper
@@ -102,43 +107,51 @@ if (ano == '2019') {
 } else if (ano == '2028') {
   rotas <- sprintf('%s/04_base_alternatives_%s_res09_40min.csv', pasta_aoprv_alter, ano)
 }
-rotas <- rotas %>% read_delim(rotas, delim = ';', col_types = 'ciddddc')
+rotas <- rotas %>% read_delim(rotas, delim = ';', col_select = c('hex_id', 'alt', 'distance'), col_types = 'cid')
 rotas <- rotas %>% mutate(alt_id = str_c(hex_id, alt, sep = '-')) %>% select(alt_id, distance)
 head(rotas)
 gc(T)
 
 
 
-# Checar rotas que já foram processadas para exclusão
-
-# Abrir rotas que só passaram por vias comuns
+# Checar rotas que já foram processadas para exclusão - aqui, vamos ler o arquivo
+# existente e remover os ids já processados do dataframe 'rotas'. Esse mesmo
+# arquivo vai ser atualizado logo adiante, portanto não vamos apagá-lo
 tmp_file1 <- sprintf('%s/tmp_ids_rotas_vias_ciclo_%s.csv', pasta_aoprv_alter, ano)
-rotas_vias_ciclo <- read_delim(tmp_file1, delim = ';', col_types = 'c')
-rotas_vias_ciclo <- rotas_vias_ciclo %>% filter(!is.na(alt_id))
+if (file.exists(tmp_file1)) {
+  # Abrir rotas que só passaram por vias comuns
+  rotas_vias_ciclo <- read_delim(tmp_file1, delim = ';', col_types = 'c')
+  rotas_vias_ciclo <- rotas_vias_ciclo %>% filter(!is.na(alt_id))
+  
+  # Abrir rotas que só passaram por vias comuns
+  tmp_file2 <- sprintf('%s/tmp_ids_rotas_vias_comuns_%s.csv', pasta_aoprv_alter, ano)
+  rotas_vias_comuns <- read_delim(tmp_file2, delim = ';', col_types = 'c')
+  rotas_vias_comuns <- rotas_vias_comuns %>% filter(!is.na(alt_id))
+  
+  # Aqui estão todas as rotas para gerar o ttmatrix final
+  rotas_a_processar <- rbind(rotas_vias_comuns, rotas_vias_ciclo)
+  
+  # Excluir rotas que já foram processadas
+  rotas <- rotas %>% filter(!alt_id %in% rotas_a_processar$alt_id)
+  
+  # Caso haja algum processamento relacionado a esses id_origens, removê-los para
+  # garantir que todos foram processados e algum erro não os fez parar no meio
+  rotas_vias_ciclo  <- rotas_vias_ciclo  %>% filter(!alt_id %in% rotas$alt_id)
+  rotas_vias_comuns <- rotas_vias_comuns %>% filter(!alt_id %in% rotas$alt_id)
+  
+  # Reescrever arquivos de rotas_vias_comuns e rotas_vias_ciclo
+  write_delim(rotas_vias_ciclo,  tmp_file1, delim = ';')
+  write_delim(rotas_vias_comuns, tmp_file2, delim = ';')
+  
+  # Limpar ambiente
+  rm(rotas_a_processar, rotas_vias_ciclo, rotas_vias_comuns, tmp_file1, tmp_file2)
+  gc(T)
+  
+} else {
+  
+  rm(tmp_file1)
+}
 
-# Abrir rotas que só passaram por vias comuns
-tmp_file2 <- sprintf('%s/tmp_ids_rotas_vias_comuns_%s.csv', pasta_aoprv_alter, ano)
-rotas_vias_comuns <- read_delim(tmp_file2, delim = ';', col_types = 'c')
-rotas_vias_comuns <- rotas_vias_comuns %>% filter(!is.na(alt_id))
-
-# Aqui estão todas as rotas para gerar o ttmatrix final
-rotas_a_processar <- rbind(rotas_vias_comuns, rotas_vias_ciclo)
-
-# Excluir rotas que já foram processadas
-rotas <- rotas %>% filter(!alt_id %in% rotas_a_processar$alt_id)
-
-# Caso haja algum processamento relacionado a esses id_origens, removê-los para
-# garantir que todos foram processados e algum erro não os fez parar no meio
-rotas_vias_ciclo  <- rotas_vias_ciclo  %>% filter(!alt_id %in% rotas$alt_id)
-rotas_vias_comuns <- rotas_vias_comuns %>% filter(!alt_id %in% rotas$alt_id)
-
-# Reescrever arquivos de rotas_vias_comuns e rotas_vias_ciclo
-write_delim(rotas_vias_ciclo,  tmp_file1, delim = ';')
-write_delim(rotas_vias_comuns, tmp_file2, delim = ';')
-
-# Limpar ambiente
-rm(rotas_a_processar, rotas_vias_ciclo, rotas_vias_comuns, tmp_file1, tmp_file2)
-gc(T)
 
 
 # Separar ids de origem, para arquivos
@@ -146,7 +159,9 @@ ids_origem <- rotas %>% select(id_orig = alt_id) %>% mutate(id_orig = str_sub(id
 
 
 # Separar ids das rotas que passaram só por vias comuns e as que passaram por
-# alguma infraestrutura cicloviária ao longo do caminho
+# alguma infraestrutura cicloviária ao longo do caminho. Neste momento, caso o
+# arquivo 'tmp_ids_rotas_vias_ciclo_%s.csv' já exista, não apagá-lo pois ele
+# será atualizado com as novas rotas processadas
 detach('package:tidylog')
 start <- Sys.time()
 for (line_id in ids_origem$id_orig) {
@@ -201,7 +216,7 @@ Sys.time() - start
 
 # Limpar ambiente
 rm(line_id, osm_ids, rotas_ciclo, rotas_vias_comuns, tmp_file1, tmp_file2,
-   ids_origem, rotas)
+   ids_origem, rotas, infra_ciclo)
 gc(T)
 
 
@@ -259,7 +274,7 @@ if (nrow(faltam) > 0) {
 }
 
 # Limpar ambiente
-rm(faltam, rotas_a_processar, rotas_vias_ciclo, rotas_vias_comuns, infra_ciclo)
+rm(rotas_a_processar, rotas_vias_ciclo, rotas_vias_comuns)
 gc(T)
 
 
@@ -307,6 +322,8 @@ if (ano == '2019') {
 } else if (ano == '2028') {
   out_file <- sprintf('%s/05_tmp_ttmatrix_%s_rotas_vias_comuns.csv', pasta_aoprv_alter, ano)
 }
+# Garantir que arquivo existente não será sobrescrito
+if (file.exists(out_file)) { file.rename(from = out_file, to = sprintf('%s_BKP_APAGAR', out_file)) }
 write_delim(rotas_comuns, out_file, delim = ';')
 
 

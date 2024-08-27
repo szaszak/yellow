@@ -2,6 +2,46 @@
 # PBF da Rede 2019; custom model ajustado (LTS)
 # clear && cd /home/livre/Desktop/Base_GtsRegionais/GitLab/yellow_src/graphhopper/ && rm -rf graph-cache/ && java -Ddw.graphhopper.datareader.file=/home/livre/Desktop/Base_GtsRegionais/GitLab/yellow_dados/07_graphhopper/03_PBFs_SP_rede_2019/20220216_sao_paulo_edited_20230521_A_infraciclo_atual.osm.pbf -jar graphhopper/web/target/graphhopper-web-*.jar server graphhopper/config-example_LTS.yml
 
+# 12.09 - Cria/atualiza pastas A_, B_, C_, D_ (*) 
+# ------- // usa arq '00_base_para_routing_res09_26vizinhos.csv'
+# ------- // gera/atualiza arq 'tmp_00_ids_processados_20XX.csv' (*)
+# ------- // COMPACTAR pastas A_ e C_
+# ------- // COMPACTAR E APAGAR arquivos 'tmp_00_ids_processados_20XX.csv'
+# 12.11 - Usa pastas B_ e D_ (único uso - compactar e apagar)
+# ------- // gera arq '01[04]_base_alternatives_%s_res09_40min.csv'
+# ------- // COMPACTAR E APAGAR pastas B_ e D_
+# 12.12 - Usa pastas A_ e C_
+# ------- // usa arq '00_base_para_routing_res09_26vizinhos.csv'
+# ------- // usa arq '01[04]_base_alternatives_%s_res09_40min.csv'
+# ------- // gera arq 'tmp_infra_ciclo_%s.csv'
+# ------- // gera/atualiza arq 'tmp_ids_rotas_vias_ciclo_%s.csv'  (*)
+# ------- // gera/atualiza arq 'tmp_ids_rotas_vias_comuns_%s.csv' (*)
+# ------- // gera arq '02[05]_tmp_ttmatrix_%s_rotas_vias_comuns.csv'
+# 12.13 - Cria pastas temporárias X_ e Y_
+# ------- // usa arq '01[04]_base_alternatives_%s_res09_40min.csv'
+# ------- // usa arq 'tmp_ids_rotas_vias_ciclo_%s.csv'
+# ------- // usa arq '03[06]_tmp_ttmatrix_%s_rotas_infra_ciclo.csv'
+# 12.14 - Cria/atualiza pastas E_, F_, Z_ (único uso das pastas Z_ - compactar e apagar) (*)
+# ------- Usa pastas A_ e C_, X_ e Y_ (último uso dessas pastas - compactar e apagar)
+# ------- // usa arq '01[04]_base_alternatives_%s_res09_40min.csv'
+# ------- // usa arq '03[06]_tmp_ttmatrix_%s_rotas_infra_ciclo.csv'
+# ------- // usa arq 'tmp_ids_rotas_vias_ciclo_%s.csv'
+# ------- // gera arq '03[06]_tmp_ttmatrix_%s_rotas_infra_ciclo.csv'
+# ------- // COMPACTAR pastas E_, F_, Z_
+# ------- // APAGAR pastas A_ e C_, X_ e Y_, Z_
+# 13.01 - 
+# ------- // usa arq '02[05]_tmp_ttmatrix_%s_rotas_vias_comuns.csv'
+# ------- // usa arq '03[06]_tmp_ttmatrix_%s_rotas_infra_ciclo.csv'
+# ------- // gera arq '01_ttmatrix_%s_res09_%smin.csv'
+# 13.02 - Usa pastas E_ e F_ (último uso dessas pastas - compactar e apagar)
+# ------- // usa  arq '01_ttmatrix_%s_res09_%smin.csv')
+# ------- // gera arq '02_osm_ids_ttmatrix_%s_res09_%smin.csv'
+# ------- // APAGAR pastas E_ e F_
+# (*) Se for rodar esses scripts como complementação de rotas que partiram de
+# hexágonos que ainda não haviam sido processados, precisa descompactar essas
+# pastas para reconhecer o que já rodou e adicionar o que não havia rodado.
+
+
 # carregar bibliotecas
 source('fun/setup.R')
 library('httr')

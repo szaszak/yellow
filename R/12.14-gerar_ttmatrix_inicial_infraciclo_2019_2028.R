@@ -15,23 +15,27 @@ library('tidylog')
 library('sf')
 library('googlePolylines')
 
+# Não mudar o valor de min_thres aqui - deixar no máximo
+# ano <- '2019'; min_thres <- 40 #; sec_thres <- min_thres * 60
+ano <- '2028'; min_thres <- 40 #; sec_thres <- min_thres * 60
+
 # Estrutura de pastas
 pasta_ssd         <- "/media/livre/SSD120GB/yellow"
 pasta_dados       <- "../../yellow_dados"
 pasta_aop_rev     <- sprintf("%s/12_aop_revisitado", pasta_dados)
 pasta_aoprv_alter <- sprintf("%s/03_alternatives_2019_2028", pasta_aop_rev)
-pasta_ids_aopt_19 <- sprintf("%s/A_2019_osm_way_ids_aop", pasta_aoprv_alter)
-pasta_ids_aopt_28 <- sprintf("%s/C_2028_osm_way_ids_aop", pasta_aoprv_alter)
 
-# ano <- '2019'; min_thres <- 40 #; sec_thres <- min_thres * 60
-ano <- '2028'; min_thres <- 40 #; sec_thres <- min_thres * 60
 
+# ATENÇÃO: se o script está incluindo novas rotas, descompactar as pastas E_ e F_ 
+# antes de rodar, para somar às existentes
 if (ano == '2019') {
+  pasta_ids_aopt_19 <- sprintf("%s/A_2019_osm_way_ids_aop", pasta_aoprv_alter)
   pasta_tmp_osmids  <- sprintf("%s/E_%s_osm_way_ids_tmp_%s_min", pasta_ssd, ano, min_thres)
 } else if (ano == '2028') {
+  pasta_ids_aopt_28 <- sprintf("%s/C_2028_osm_way_ids_aop", pasta_aoprv_alter)
   pasta_tmp_osmids  <- sprintf("%s/F_%s_osm_way_ids_tmp_%s_min", pasta_ssd, ano, min_thres)
 }
-dir.create(pasta_tmp_osmids, recursive = TRUE, showWarnings = FALSE)
+dir.create(pasta_tmp_osmids, recursive = TRUE, showWarnings = TRUE)
 rm(min_thres)
 
 if (ano == '2019') {
@@ -40,9 +44,11 @@ if (ano == '2019') {
   pasta_tmp_divididas <- sprintf("%s/Y_%s_tmp_base_dividida", pasta_ssd, ano)
 }
 
-# Pasta para colocar arquivos de ttmatrix temporários
+# Pasta para colocar arquivos de ttmatrix temporários. ATENÇÃO: se o script
+# está incluindo novas rotas, descompactar esta pasta antes de rodar, para
+# somar às existentes
 pasta_tmp_ttmatrix <- sprintf("%s/Z_%s_tmp_ttmatrix", pasta_ssd, ano)
-dir.create(pasta_tmp_ttmatrix, recursive = TRUE, showWarnings = FALSE)
+dir.create(pasta_tmp_ttmatrix, recursive = TRUE, showWarnings = TRUE)
 
 
 # ------------------------------------------------------------------------------
@@ -279,6 +285,12 @@ viario_sp <- read_sf(sprintf('%s/tmp_sao_paulo_osm_filtrado.gpkg', pasta_aoprv_a
 head(viario_sp)
 
 # Abrir infra cicloviária
+# ATENÇÃO: Para a rede 2028, alguns osm_ids constantes aqui estão marcados como
+# pertencentes à rede de referência, mas na verdade possuem só um trecho que de
+# fato tem estrutura cicloviária. Isso foi percebido no momento do script 13.09
+# e um aviso foi colocado aqui e no script 12.12, que é o que gera o arquivo
+# tmp_infra_ciclo_%s.csv. A correção se dará nos scripts 13.09 e 13.10, mas
+# caso seja implementada no 12.12, apagar esse aviso.
 infra_ciclo <- sprintf('%s/tmp_infra_ciclo_%s.csv', pasta_aoprv_alter, ano)
 infra_ciclo <- read_delim(infra_ciclo, delim = ';', col_types = 'cc')
 head(infra_ciclo)
@@ -291,7 +303,7 @@ arqs <- data.frame(arqs = list.files(pasta_tmp_divididas,
                                      full.names = TRUE))
 # arqs <- arqs[1:1233]
 # arqs <- sample_n(arqs, 35)
-# arqs <- arqs %>% slice(1:135)
+# arqs <- arqs %>% slice(1:56)
 
 # Este loop vai ocupar pouca memória RAM e processamento, então é possível rodá-lo
 # em várias instâncias paralelas do RStudio ao mesmo tempo. Ainda assim, vai 
@@ -324,7 +336,7 @@ for (arq in arqs$arqs) {
                                                 hex_id = str_replace(hex_id, 'ffff$', ''),
                                                 id = str_c(hex_id, alt, sep = '-'))
     grupo_rotas <- grupo_rotas %>% filter(!alt_id %in% arq_resultados$id)
-    rm(arqs_resultados)
+    rm(arq_resultados)
     
   }
 
@@ -355,6 +367,8 @@ Sys.time() - start
 # Checar se todas as rotas foram processadas
 # ------------------------------------------------------------------------------
 
+library('tidylog')
+
 # ODs e número da rota alternativa das rotas a serem processadas é a listagem de
 # ids contida no arquivo tmp_ids_rotas_vias_ciclo_20XX.csv
 # Abrir rotas que só passaram por vias com infra cicloviária
@@ -369,12 +383,13 @@ rotas_proc <- rotas_proc %>% mutate(hex_id = str_replace(hex_id, '^89a81', ''),
                                     hex_id = str_replace(hex_id, 'ffff-89a81', '-'),
                                     hex_id = str_replace(hex_id, 'ffff$', ''),
                                     hex_id_alt = str_c(hex_id, alt, sep = '-'))
+rotas_proc <- rotas_proc %>% distinct()
 
 # Checar: todas as rotas que tinham que ser processadas, foram?
-rotas_proc %>% filter(!hex_id_alt %in% rotas_vias_ciclo$alt_id) 
+rotas_vias_ciclo %>% filter(!alt_id %in% rotas_proc$hex_id_alt)
 
 # Limpar ambiente
-rm(rotas_proc)
+rm(rotas_proc, rotas_vias_ciclo)
 gc(T)
 
 
@@ -388,6 +403,13 @@ if (ano == '2019') {
 } else if (ano == '2028') {
   out_file <- sprintf('%s/06_tmp_ttmatrix_%s_rotas_infra_ciclo.csv', pasta_aoprv_alter, ano)
 }
+
+# Este arquivo será criado aqui. Se ele já existe, é porque foi criado antes e
+# este script está sendo rodado novamente para incluir hexágonos que haviam 
+# ficado de fora. Neste caso, precisamos apagar este arquivo para criar outro
+# como substituição. Para não apagar de ver, vamos renomeá-lo aqui 
+if (file.exists(out_file)) { file.rename(from = out_file, to = sprintf('%s_BKP_APAGAR', out_file)) }
+
 
 # Arquivos ttmatrix divididos por hexágono
 rotas_proc <- data.frame(arq = list.files(pasta_tmp_ttmatrix, full.names = TRUE, recursive = FALSE))
@@ -409,3 +431,23 @@ for (arq in rotas_proc$arq) {
   }
   
 }
+
+# rotas_proc1 <- read_delim(out_file, delim = ';', col_select = c('hex_id', 'alt'), col_types = cols(.default = "c"))
+# rotas_proc1 <- rotas_proc1 %>% mutate(hex_id = str_replace(hex_id, '^89a81', ''),
+#                                     hex_id = str_replace(hex_id, 'ffff-89a81', '-'),
+#                                     hex_id = str_replace(hex_id, 'ffff$', ''),
+#                                     hex_id_alt = str_c(hex_id, alt, sep = '-'))
+# rotas_proc1 <- rotas_proc1 %>% distinct()
+# head(rotas_proc1)
+# 
+# out_file2 <- sprintf('%s/x06_tmp_ttmatrix_%s_rotas_infra_ciclo.csv', pasta_aoprv_alter, ano)
+# rotas_proc2 <- read_delim(out_file2, delim = ';', col_select = c('hex_id', 'alt'), col_types = cols(.default = "c"))
+# rotas_proc2 <- rotas_proc2 %>% mutate(hex_id = str_replace(hex_id, '^89a81', ''),
+#                                       hex_id = str_replace(hex_id, 'ffff-89a81', '-'),
+#                                       hex_id = str_replace(hex_id, 'ffff$', ''),
+#                                       hex_id_alt = str_c(hex_id, alt, sep = '-'))
+# rotas_proc2 <- rotas_proc2 %>% distinct()
+# head(rotas_proc2)
+# 
+# rotas_proc1 %>% filter(!hex_id_alt %in% rotas_proc2$hex_id_alt)
+# rotas_proc2 %>% filter(!hex_id_alt %in% rotas_proc1$hex_id_alt)

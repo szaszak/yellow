@@ -4,17 +4,18 @@
 library('tidyverse')
 # library('tidylog')
 
-
 # Estrutura de pastas
 pasta_ssd         <- "/media/livre/SSD120GB/yellow"
 pasta_dados       <- "../../yellow_dados"
 pasta_aop_rev     <- sprintf("%s/12_aop_revisitado", pasta_dados)
 pasta_aoprv_alter <- sprintf("%s/03_alternatives_2019_2028", pasta_aop_rev)
-pasta_rts_aopt_19 <- sprintf("%s/B_2019_rotas_modeladas_alternatives", pasta_aoprv_alter)
+pasta_rts_aopt_19 <- sprintf("%s/B_2019_rotas_modeladas_alternatives", pasta_ssd)
 pasta_rts_aopt_28 <- sprintf("%s/D_2028_rotas_modeladas_alternatives", pasta_ssd)
 
-# Definir ano para rodar o script: 2019 ou 2028
-ano <- 2019; min_thres <- 40 ; sec_thres <- min_thres * 60
+# Definir ano para rodar o script: 2019 ou 2028. Não mudar o tempo aqui, deixar
+# o tempo máximo a ser considerado
+# ano <- 2019; min_thres <- 40 ; sec_thres <- min_thres * 60
+ano <- 2028; min_thres <- 40 ; sec_thres <- min_thres * 60
 
 
 # ------------------------------------------------------------------------------
@@ -26,6 +27,9 @@ if (ano == '2019') {
   out_base_name <- sprintf('01_base_alternatives_%s_res09_40min', ano)
   out_file <- sprintf('%s/%s.csv', pasta_aoprv_alter, out_base_name)
   
+  # Garantir que arquivo existente não será sobrescrito
+  if (file.exists(out_file)) { file.rename(from = out_file, to = sprintf('%s_BKP_APAGAR', out_file)) }
+  
   # Arquivos com as rotas resultantes do routing pelo graphhopper
   alternatives <- data.frame(arq = list.files(pasta_rts_aopt_19, 
                                               pattern = '_modalt.csv', 
@@ -35,6 +39,9 @@ if (ano == '2019') {
   # Definir arquivo de saída
   out_base_name <- sprintf('04_base_alternatives_%s_res09_40min', ano)
   out_file <- sprintf('%s/%s.csv', pasta_aoprv_alter, out_base_name)
+  
+  # Garantir que arquivo existente não será sobrescrito
+  if (file.exists(out_file)) { file.rename(from = out_file, to = sprintf('%s_BKP_APAGAR', out_file)) }
   
   # Arquivos com as rotas resultantes do routing pelo graphhopper
   alternatives <- data.frame(arq = list.files(pasta_rts_aopt_28, 

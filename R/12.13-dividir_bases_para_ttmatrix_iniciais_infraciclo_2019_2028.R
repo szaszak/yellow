@@ -1,5 +1,5 @@
 # Como o processamento para as rotas que passaram por infra cicloviária vai ser
-# muito pesado/longo, separa a base dessas rotas em cerca de ~8.100 arquivos,
+# muito pesado/longo, separa a base dessas rotas em cerca de ~8.200 arquivos,
 # com o nome referente ao id do hexágono de origem. Esses arquivos serão 
 # processados de fato no script seguinte
 
@@ -11,7 +11,6 @@ pasta_ssd         <- "/media/livre/SSD120GB/yellow"
 pasta_dados       <- "../../yellow_dados"
 pasta_aop_rev     <- sprintf("%s/12_aop_revisitado", pasta_dados)
 pasta_aoprv_alter <- sprintf("%s/03_alternatives_2019_2028", pasta_aop_rev)
-
 
 # ano <- '2019'
 ano <- '2028'
@@ -41,6 +40,44 @@ rotas_vias_ciclo <- read_delim(rotas_vias_ciclo, delim = ';', col_types = 'c')
 
 # Deixar somente rotas que passaram por infra cicloviária
 rotas <- rotas %>% filter(alt_id %in% rotas_vias_ciclo$alt_id)
+
+# Limpar ambiente
+rm(rotas_vias_ciclo)
+gc(T)
+
+# Remover rotas já processadas - aqui é o seguinte: se já houver os arquivos 03 e 
+# 06 abaixo, remover todas as linhas que já foram processadas e estão registradas 
+# neles. O passo a seguir vai processar somente as linhas restantes e jogar nas 
+# pastas X_ ou Y_. É dessas pastas que o script seguinte vai puxar o que foi 
+# separado para finalmente juntar aos arquivos de resultados já  existentes. Ou 
+# seja, as pastas X_ ou Y_ não precisam estar cheias, pois nelas somente são 
+# depositados os arquivos que deverão ser processados para somar aos já existentes
+if (ano == '2019') {
+  rotas_proc <- sprintf('%s/03_tmp_ttmatrix_%s_rotas_infra_ciclo.csv', pasta_aoprv_alter, ano)
+} else if (ano == '2028') {
+  rotas_proc <- sprintf('%s/06_tmp_ttmatrix_%s_rotas_infra_ciclo.csv', pasta_aoprv_alter, ano)
+}
+if (file.exists(rotas_proc)) {
+  # Abrir arquivo de resultados
+  rotas_proc <- read_delim(rotas_proc, delim = ';', col_select = c('hex_id', 'alt'), col_types = 'cc')
+  # Encurtar id das rotas OD
+  rotas_proc <- 
+    rotas_proc %>% 
+    mutate(hex_id = str_replace(hex_id, '^89a81([a-z0-9]{6})ffff-89a81([a-z0-9]{6})ffff', '\\1-\\2'),
+           alt_id = str_c(hex_id, alt, sep = '-'))
+  
+  # Manter somente rotas não processadas
+  rotas <- rotas %>% filter(!alt_id %in% rotas_proc$alt_id)
+  
+  # Limpar ambiente
+  rm(rotas_proc)
+  gc(T)
+
+} else {
+  rm(rotas_proc)
+  
+}
+
 
 # Criar base de ids de origem para fazer a separação dos arquivos
 base_ids <- rotas %>% select(base_id) %>% distinct()

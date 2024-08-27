@@ -13,6 +13,8 @@ dados_originais   <- sprintf("%s/00_dados_originais", pasta_dados)
 pasta_censo       <- sprintf("%s/CENSO", dados_originais)
 pasta_ipea        <- sprintf("%s/IPEA", dados_originais)
 pasta_aop_optimum <- sprintf("%s/13_aop_optimum", pasta_dados)
+pasta_opaop_dados <- sprintf("%s/02_dados_pop_mat", pasta_aop_optimum)
+dir.create(pasta_opaop_dados, recursive = TRUE, showWarnings = FALSE)
 
 
 # ------------------------------------------------------------------------------
@@ -70,7 +72,7 @@ setores_hex <- setores_hex %>% arrange(cod_setor, id_hex)
 head(setores_hex, 15)
 
 # Gravar resultados
-out_file <- sprintf('%s/hex_grid_sp_res09_areas_setores_censitarios.gpkg', pasta_aop_optimum)
+out_file <- sprintf('%s/hex_grid_sp_res09_areas_setores_censitarios.gpkg', pasta_opaop_dados)
 st_write(setores_hex, out_file, driver = 'GPKG', append = FALSE)
 
 
