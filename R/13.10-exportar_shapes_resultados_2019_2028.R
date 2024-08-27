@@ -3,7 +3,7 @@
 library('tidyverse')
 library('tidylog')
 library('sf')
-
+library('mapview')
 
 # Definir ano de análise e limite máximo de tempo
 ano1 <- '2019'; ano2 <- '2028'; tempo_max <- '15'
@@ -87,8 +87,10 @@ head(hex_pop_op)
 
 # Resultados por hexágono do lpSolver para o ano 1
 hex_resultados_1 <- sprintf('%s/07_resultados_por_hexagono_%s_res09_%smin.csv', pasta_opaop_ano1, ano1, tempo_max)
-hex_resultados_1 <- read_delim(hex_resultados_1, delim = ';', col_types = 'cciddii')
-hex_resultados_1 <- hex_resultados_1 %>% rename(hexclas_19 = class_hex_orig,
+hex_resultados_1 <- read_delim(hex_resultados_1, delim = ';', col_types = 'ccidddii')
+hex_resultados_1 <- hex_resultados_1 %>% select(orig,
+                                                hexclas_19 = class_hex_orig,
+                                                vgs_ok_19_tempo = tempo_medio_vgs_a_tempo,
                                                 vgs_ok_19  = viagens_a_tempo,
                                                 vgs_nok_19 = viagens_fora_tempo,
                                                 vgs_tot_19 = tot_viagens,
@@ -100,6 +102,7 @@ head(hex_resultados_1)
 orig_impossiveis_1 <- sprintf('%s/06_lpsolve_hexagonos_origens_impossiveis_%s_%smin.gpkg', pasta_opaop_ano1, ano1, tempo_max)
 orig_impossiveis_1 <- read_sf(orig_impossiveis_1) %>% st_drop_geometry() %>% select(orig = id_hex)
 orig_impossiveis_1 <- orig_impossiveis_1 %>% mutate(hexclas_19 = 'hex origem impossivel',
+                                                    vgs_ok_19_tempo = as.numeric(NA),
                                                     vgs_ok_19  = as.numeric(NA),
                                                     vgs_nok_19 = as.numeric(NA),
                                                     vgs_tot_19 = as.numeric(NA),
@@ -113,8 +116,10 @@ head(hex_resultados_1)
 
 # Resultados por hexágono do lpSolver para o ano 2
 hex_resultados_2 <- sprintf('%s/07_resultados_por_hexagono_%s_res09_%smin.csv', pasta_opaop_ano2, ano2, tempo_max)
-hex_resultados_2 <- read_delim(hex_resultados_2, delim = ';', col_types = 'cciddii')
-hex_resultados_2 <- hex_resultados_2 %>% rename(hexclas_28 = class_hex_orig,
+hex_resultados_2 <- read_delim(hex_resultados_2, delim = ';', col_types = 'ccidddii')
+hex_resultados_2 <- hex_resultados_2 %>% select(orig,
+                                                hexclas_28 = class_hex_orig,
+                                                vgs_ok_28_tempo = tempo_medio_vgs_a_tempo,
                                                 vgs_ok_28  = viagens_a_tempo,
                                                 vgs_nok_28 = viagens_fora_tempo,
                                                 vgs_tot_28 = tot_viagens,
@@ -126,6 +131,7 @@ head(hex_resultados_2)
 orig_impossiveis_2 <- sprintf('%s/06_lpsolve_hexagonos_origens_impossiveis_%s_%smin.gpkg', pasta_opaop_ano2, ano2, tempo_max)
 orig_impossiveis_2 <- read_sf(orig_impossiveis_2) %>% st_drop_geometry() %>% select(orig = id_hex)
 orig_impossiveis_2 <- orig_impossiveis_2 %>% mutate(hexclas_28 = 'hex origem impossivel',
+                                                    vgs_ok_28_tempo = as.numeric(NA),
                                                     vgs_ok_28  = as.numeric(NA),
                                                     vgs_nok_28 = as.numeric(NA),
                                                     vgs_tot_28 = as.numeric(NA),

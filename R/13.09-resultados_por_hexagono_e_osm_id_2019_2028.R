@@ -3,10 +3,11 @@
 # carregar bibliotecas
 library('tidyverse')
 library('tidylog')
+library('sf')
 
 # Definir ano de análise e limite máximo de tempo
-ano <- '2019'; tempo_max <- '15'
-# ano <- '2028'; tempo_max <- '15'
+# ano <- '2019'; tempo_max <- '15'
+ano <- '2028'; tempo_max <- '15'
 
 # Qual solução usar? A primeira considera população de interesse maior do que as
 # matrículas disponíveis; a segunda ajusta a população para caber nas matrículas
@@ -183,7 +184,7 @@ hex_resultados_tempo_ok <-
   group_by(orig) %>% 
   summarise(viagens_a_tempo = sum(viagens),
             ext_ciclo_tot_m = sum(ext_ciclo_vgs),
-            tempo_medio     = mean(time)) %>% 
+            tempo_medio_vgs_a_tempo = mean(time)) %>% 
   mutate(perc_part = ext_ciclo_tot_m / sum(.$ext_ciclo_tot_m) * 100) %>% 
   ungroup()
   
