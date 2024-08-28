@@ -64,3 +64,16 @@ sum(escolas_hex$matriculas_idades_15_17)
 # Gravar resultados
 out_file <- sprintf('%s/matriculas_censo_escolar_2019_por_hexagono.csv', pasta_opaop_dados)
 write_delim(escolas_hex, out_file, delim = ';')
+
+
+# Juntar ao grid de hexágonos para exportação
+hex_mat <- 
+  left_join(hex_mat, escolas_hex, by = 'id_hex') %>% 
+  replace(is.na(.), 0) %>% 
+  relocate(geom, .after = last_col())
+
+head(hex_mat)
+
+# Gravar resultados
+out_file2 <- sprintf('%s/matriculas_censo_escolar_2019_por_hexagono.gpkg', pasta_opaop_dados)
+st_write(hex_mat, out_file2, driver = 'GPKG', append = FALSE)

@@ -474,3 +474,14 @@ censo_hex <-
 # Gravar resultados
 out_file <- sprintf('%s/hex_grid_sp_res09_dados_censo_por_hexagono.csv', pasta_opaop_dados)
 write_delim(censo_hex, out_file, delim = ';')
+
+
+# Juntar com grid de hexágonos do IPEA
+hex_ipea <- sprintf('%s/aop_hex_grid_v2.gpkg', pasta_ipea)
+hex_ipea <- read_sf(hex_ipea) %>% filter(abbrev_muni == 'spo') %>% select(id_hex)
+
+hex_censo <- left_join(hex_ipea, censo_hex) %>% relocate(geom, .after = last_col())
+
+# Gravar resultados
+out_file2 <- sprintf('%s/hex_grid_sp_res09_dados_censo_por_hexagono.gpkg', pasta_opaop_dados)
+st_write(hex_censo, out_file2, driver = 'GPKG', append = FALSE)

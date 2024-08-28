@@ -85,7 +85,7 @@ head(hex_pop_op)
 # Quantidade de viagens e extensão percorrida em infra ciclo - por hexágono
 # ------------------------------------------------------------------------------
 
-# Resultados por hexágono do lpSolver para o ano 1
+# Resultados por hexágono do lpSolve para o ano 1
 hex_resultados_1 <- sprintf('%s/07_resultados_por_hexagono_%s_res09_%smin.csv', pasta_opaop_ano1, ano1, tempo_max)
 hex_resultados_1 <- read_delim(hex_resultados_1, delim = ';', col_types = 'ccidddii')
 hex_resultados_1 <- hex_resultados_1 %>% select(orig,
@@ -114,7 +114,7 @@ hex_resultados_1 %>% filter(hexclas_19 == 'hex origem impossivel')
 head(hex_resultados_1)
 
 
-# Resultados por hexágono do lpSolver para o ano 2
+# Resultados por hexágono do lpSolve para o ano 2
 hex_resultados_2 <- sprintf('%s/07_resultados_por_hexagono_%s_res09_%smin.csv', pasta_opaop_ano2, ano2, tempo_max)
 hex_resultados_2 <- read_delim(hex_resultados_2, delim = ';', col_types = 'ccidddii')
 hex_resultados_2 <- hex_resultados_2 %>% select(orig,
@@ -190,6 +190,15 @@ out_hex <- sprintf('%s/hexagonos_sp_resultados_metodo_%s_res09_2019_2028.gpkg', 
 st_write(hexagonos, out_hex, driver = 'GPKG', append = FALSE, delete_layer = TRUE)
 
 
+hexagonos %>% st_drop_geometry() %>% select(matches('_tempo')) %>% summary()
+# vgs_ok_19_tempo vgs_ok_28_tempo
+# Min.   :  0.0   Min.   :  0.0  
+# 1st Qu.:152.3   1st Qu.:155.1  
+# Median :350.4   Median :350.9  
+# Mean   :369.0   Mean   :375.1  
+# 3rd Qu.:583.0   3rd Qu.:592.1  
+# Max.   :900.0   Max.   :900.0  
+# NA's   :4624    NA's   :4616  
 
 # ------------------------------------------------------------------------------
 # Base geral - viário da cidade de SP

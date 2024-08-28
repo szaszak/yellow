@@ -19,7 +19,7 @@ pasta_graphhopper <- sprintf("%s/07_graphhopper", pasta_dados)
 pasta_aop_rev     <- sprintf("%s/12_aop_revisitado", pasta_dados)
 pasta_aoprv_alter <- sprintf("%s/03_alternatives_2019_2028", pasta_aop_rev)
 pasta_aop_optimum <- sprintf("%s/13_aop_optimum", pasta_dados)
-pasta_opaop_ttmat <- sprintf("%s/01_ttmatrix", pasta_aop_optimum, ano)
+pasta_opaop_ttmat <- sprintf("%s/01_ttmatrix", pasta_aop_optimum)
 if (versao_solucao == 1) {
   pasta_aop_lpsolve <- sprintf("%s/03_lpSolve1_pop_maior_que_mat", pasta_aop_optimum)
 } else if (versao_solucao == 2) {
@@ -252,12 +252,7 @@ osm_id_resultados <-
   mutate(ext_percorrida = ifelse(is.na(ext_percorrida), 0, ext_percorrida)) %>% 
   # Extensão percorrida (em metros) é a quantidade de viagens vezes a extensão 
   # percorrida por rota
-  mutate(ext_ciclo_vgs = ext_percorrida * viagens)
-
-
-
-osm_id_resultados <- 
-  osm_id_resultados %>% 
+  mutate(ext_ciclo_vgs = ext_percorrida * viagens) %>% 
   # Calcular total de viagens em cada hexágono de origem e total da extensão
   # (em metros) percorrida em infra cicloviária a partir daquela origem
   group_by(osm_way_id) %>% 
