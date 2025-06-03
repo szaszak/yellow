@@ -165,7 +165,7 @@ base_modelo %>% select(trip_id, dist_total) %>% distinct() %>% select(dist_total
 # Mean   : 1896.6  
 # 3rd Qu.: 2322.2  
 # Max.   :30266.7  
-base_modelo %>% select(trip_id, dist_total) %>% distinct() %>% select(dist_total) %>% quantile(probs = seq(0.8, 1, 0.005), na.rm = TRUE)
+base_modelo %>% select(trip_id, dist_total) %>% distinct() %>% select(dist_total) %>% quantile(probs = seq(0.1, 0.5, 0.005), na.rm = TRUE)
 #      80%     80.5%       81%     81.5%       82%     82.5%       83%     83.5%       84%     84.5%       85% 
 # 2656.588  2694.701  2734.861  2774.278  2817.207  2862.740  2909.903  2959.413  3009.171  3063.197  3111.941 
 #    85.5%       86%     86.5%       87%     87.5%       88%     88.5%       89%     89.5%       90%     90.5% 
@@ -174,7 +174,53 @@ base_modelo %>% select(trip_id, dist_total) %>% distinct() %>% select(dist_total
 # 3957.052  4055.067  4157.739  4272.041  4398.488  4528.083  4666.254  4816.894  4990.879  5185.207  5404.459 
 #    96.5%       97%     97.5%       98%     98.5%       99%     99.5%      100% 
 # 5640.571  5955.318  6315.590  6739.180  7300.090  8038.369  9511.673 30266.671 
+dists_histogram <- base_modelo %>% select(trip_id, dist_total) %>% distinct() %>% select(dist_total) %>% filter(!is.na(dist_total))
+hist(dists_histogram$dist_total, pch = 16, cex = 1, breaks = 250, 
+     # main = 'Histograma: Distâncias totais das viagens utilizadas no modelo',
+     main = NULL,
+     xlab = 'distâncias (metros)',
+     ylab = 'frequência',
+     # Começar gráfico em 300, limitando para 15000
+     xlim = c(300, 15000),
+     # Não mostrar eixo x, o que será feito manualmente a seguir (xaxt = "n")
+     xaxt = "n")
+# Mostrar divisões para o eixo x
+axis(side = 1, at = c(300, 5000, 10000, 15000))
+abline(v = median(dists_histogram$dist_total), col = 'red', lwd = 1, lty = 1)
+text(x = 15000,
+     y = 9000,
+     paste('Mediana = ', round(median(dists_histogram$dist_total), 1)),
+     adj = c(1,0),
+     col = 'red',
+     cex = 1)
+abline(v = mean(dists_histogram$dist_total), col = 'orange', lwd = 1, lty = 2)
+text(x = 15000,
+     y = 7500,
+     paste('Média = ', round(mean(dists_histogram$dist_total), 1)),
+     adj = c(1,0),
+     col = 'orange',
+     cex = 1)
 
+abline(v = quantile(dists_histogram$dist_total, probs = c(0.75)), col = 'darkgreen', lwd = 1, lty = 3)
+text(x = 15000,
+     y = 6000,
+     paste('75% = ', round(quantile(dists_histogram$dist_total, probs = c(0.75)), 1)),
+     adj = c(1,0),
+     col = 'darkgreen',
+     cex = 1)
+
+abline(v = quantile(dists_histogram$dist_total, probs = c(0.90)), col = 'blue', lwd = 1, lty = 3)
+text(x = 15000,
+     y = 4500,
+     paste('90% = ', round(quantile(dists_histogram$dist_total, probs = c(0.90)), 1)),
+     adj = c(1,0),
+     col = 'blue',
+     cex = 1)
+text(x = 15000,
+     y = 3000,
+     paste('bin size = 250; cutoff val. 15000'),
+     adj = c(1,0),
+     cex = 1)
 
 # Método Favero e Belfiore para remoção de outliers extremos
 base_modelo %>% select(dist_total) %>% quantile(probs = seq(0.9, 1, 0.01), na.rm = TRUE)

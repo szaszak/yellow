@@ -1,4 +1,4 @@
-# Junta os dados do Censo Escolar 2019 (em especial, matrículas) aos dados de 
+# Junta os dados do Censo Escolar 2023 (em especial, matrículas) aos dados de 
 # georreferenciamento das escolas. Para as que não possuíam latlong, a atualização
 # da localização é feita de forma manual
 
@@ -14,8 +14,8 @@ pasta_dados       <- "../../yellow_dados"
 dados_originais   <- sprintf("%s/00_dados_originais", pasta_dados)
 pasta_inep        <- sprintf("%s/INEP", dados_originais)
 pasta_ipea        <- sprintf("%s/IPEA", dados_originais)
-pasta_aop_optimum <- sprintf("%s/13_aop_optimum", pasta_dados)
-pasta_opaop_dados <- sprintf("%s/02_dados_pop_mat", pasta_aop_optimum)
+pasta_aop_2024_2028  <- sprintf("%s/14_aop_2024_2028", pasta_dados)
+pasta_ttmatrix_24_28 <- sprintf("%s/04_ttmatrix_2024_2028", pasta_aop_2024_2028)
 
 
 # ------------------------------------------------------------------------------
@@ -87,7 +87,7 @@ escolas <-
 # https://www.gov.br/inep/pt-br/acesso-a-informacao/dados-abertos/microdados/censo-escolar
 
 # Dados de matrículoas do Censo Escolar 2019
-matriculas <- sprintf('%s/microdados_ed_basica_2019/dados/microdados_ed_basica_2019.csv', pasta_inep)
+matriculas <- sprintf('%s/microdados_censo_escolar_2023/dados/microdados_ed_basica_2023.csv', pasta_inep)
 matriculas <- read_delim(matriculas, delim = ';', col_types = cols(.default = "c"), locale = locale(encoding = 'iso_8859-1'))
 
 # Considerar somente cidade de SP
@@ -175,8 +175,6 @@ matriculas <- matriculas %>% mutate_at(vars(matches('QT_MAT_')), as.numeric)
 # Filtrar conforme IPEA e Tainá Bittencourt
 matriculas <-
   matriculas %>%
-  # Considerar somente cidade de SP
-  filter(CO_MUNICIPIO == '3550308') %>%
   # Situação de funcionamento - 1. Em atividade
   filter(TP_SITUACAO_FUNCIONAMENTO == '1') %>%
   # Etapa de Ensino - Ensino Médio, Educação Profissional, Educação Profissional
@@ -191,7 +189,7 @@ matriculas <-
   filter(IN_LOCAL_FUNC_UNID_PRISIONAL == '0' & IN_LOCAL_FUNC_PRISIONAL_SOCIO == '0')
 
 # Checar - vagas para idades de 15 a 17 anos devem ser todos maior que zero
-matriculas <- matriculas %>% filter(QT_MAT_BAS_15_17 != '0' | QT_MAT_BAS_18_MAIS != '0')
+matriculas <- matriculas %>% filter(QT_MAT_BAS_15_17 > 0 | QT_MAT_BAS_18_MAIS > 0)
 
 # Manter somente variáveis de interesse (ver dicionário de dados)
 matriculas <- matriculas %>% select(CO_ENTIDADE,
@@ -324,40 +322,62 @@ escolas_sem_geocode <- matriculas %>% filter(is.na(Latitude))
 
 # Dados de latlon pesquisados no Google
 # escolas_sem_geocode %>% slice(30) %>% t()
+# escolas_sem_geocode %>% select(CO_ENTIDADE) %>% slice(1:20)
 novos <- list(c('35000280', '-23.43549830732259', '-46.717311856877146'),
-              c('35004964', '-23.50239921492758', '-46.640273428018496'),
+              # c('35004964', '-23.50239921492758', '-46.640273428018496'),
               c('35005594', '-23.60500366377796', '-46.700306245263770'),
               c('35005969', '-23.56972383024869', '-46.725713324914830'),
-              c('35100092', '-23.50883722480011', '-46.655538880581304'),
-              c('35101761', '-23.59055303342240', '-46.502778346716820'),
-              c('35102027', '-23.52339402675061', '-46.525759478069830'),
-              c('35102258', '-23.54721583377207', '-46.408668665802050'),
-              c('35102635', '-23.53166288875540', '-46.719832630278480'),
-              c('35102982', '-23.53236999193194', '-46.668661565368310'),
-              c('35103263', '-23.53217018826825', '-46.643521044421874'),
-              c('35104887', '-23.54407115102775', '-46.697065417898706'),
-              c('35105797', '-23.61704213051163', '-46.670948818093500'),
-              c('35106124', '-23.61634441160014', '-46.656377592628810'),
-              c('35120418', '-23.61308502322052', '-46.623284773075300'),
-              c('35134120', '-23.55391493562721', '-46.553488348382040'),
-              c('35136232', '-23.54317445524563', '-46.683901146886590'),
-              c('35137085', '-23.69371199935261', '-46.660254651204156'),
-              c('35138198', '-23.46723162909702', '-46.631574400015470'),
-              c('35138253', '-23.47448114403186', '-46.613031467347670'),
-              c('35140200', '-23.65531744692543', '-46.668458407159490'),
-              c('35140363', '-23.60984792482514', '-46.704479095232806'),
-              c('35142220', '-23.55724323175262', '-46.444820662891600'),
+              c('35006923', '-23.64463357730925', '-46.72011311249616'),
+              c('35007054', '-23.46353034854016', '-46.61631719027659'),
+              c('35007070', '-23.64263602593001', '-46.659853967926'),
+              c('35007098', '-23.52734611693636', '-46.635050439116'),
+              c('35007102', '-23.52461942168243', '-46.688610752589355'),
+              c('35007117', '-23.63983219635052', '-46.662788944177755'),
+              c('35007387', '-23.47642076875936', '-46.57267348696842'),
+              c('35007592', '-23.64386688539300', '-46.66938685690356'),
+              c('35007664', '-23.49271277779354', '-46.73178858685624'),
+              c('35007744', '-23.65958145357109', '-46.68615115079071'),
+              c('35007939', '-23.49306456787184', '-46.44693989122773'),
+              c('35008650', '-23.55768091611941', '-46.4443975396648'),
+              c('35008727', '-23.64959574253568', '-46.700964002081314'),
+              c('35008950', '-23.602879043846',   '-46.74533501339669'),
+              c('35009327', '-23.54299233618092', '-46.562484394913696'),
+              c('35009476', '-23.58882073829476', '-46.54287396099521'),
+              c('35009561', '-23.50284980597260', '-46.47506355595488'),
+              c('35009658', '-23.58517950350300', '-46.4149762739637'),
+              c('35009665', '-23.552468074376968', '-46.67931811543852'),
+              c('35009839', '-23.591962720870026', '-46.61070912173573'),
+              # c('35103100', '-23.556630208275475', '-46.91299859204469'), # fora de SP, endereço não encontrado
+              # c('35100092', '-23.50883722480011', '-46.655538880581304'),
+              # c('35101761', '-23.59055303342240', '-46.502778346716820'),
+              # c('35102027', '-23.52339402675061', '-46.525759478069830'),
+              # c('35102258', '-23.54721583377207', '-46.408668665802050'),
+              # c('35102635', '-23.53166288875540', '-46.719832630278480'),
+              # c('35102982', '-23.53236999193194', '-46.668661565368310'),
+              # c('35103263', '-23.53217018826825', '-46.643521044421874'),
+              # c('35104887', '-23.54407115102775', '-46.697065417898706'),
+              # c('35105797', '-23.61704213051163', '-46.670948818093500'),
+              # c('35106124', '-23.61634441160014', '-46.656377592628810'),
+              # c('35120418', '-23.61308502322052', '-46.623284773075300'),
+              # c('35134120', '-23.55391493562721', '-46.553488348382040'),
+              # c('35136232', '-23.54317445524563', '-46.683901146886590'),
+              # c('35137085', '-23.69371199935261', '-46.660254651204156'),
+              # c('35138198', '-23.46723162909702', '-46.631574400015470'),
+              # c('35138253', '-23.47448114403186', '-46.613031467347670'),
+              # c('35140200', '-23.65531744692543', '-46.668458407159490'),
+              # c('35140363', '-23.60984792482514', '-46.704479095232806'),
+              # c('35142220', '-23.55724323175262', '-46.444820662891600'),
               c('35151737', '-23.58426024614579', '-46.419181279609490'),
-              c('35157685', '-23.51480910920090', '-46.582934487769380'),
-              c('35173150', '-23.48877743626911', '-46.687795806420450'),
-              c('35392315', '-23.50177232668354', '-46.635089851253376'),
+              # c('35157685', '-23.51480910920090', '-46.582934487769380'),
+              # c('35173150', '-23.48877743626911', '-46.687795806420450'),
+              # c('35392315', '-23.50177232668354', '-46.635089851253376'),
               c('35567985', '-23.47196032465768', '-46.636430514957740'),
-              c('35580193', '-23.55479321607006', '-46.509930934988040'),
+              # c('35580193', '-23.55479321607006', '-46.509930934988040'),
               c('35812912', '-23.50103180667017', '-46.746285465807650')
 )
 
 # Criar e preencher nova matriz com dados de latlong
-novos_geocodes <- matrix(nrow = 30, ncol = 3)
+novos_geocodes <- matrix(nrow = 26, ncol = 3)
 n <- 1
 for (i in novos) { novos_geocodes[n,] <- i; n <- n + 1 }
 rm(n, i)
@@ -372,7 +392,7 @@ escolas_sem_geocode <-
   left_join(novos_geocodes, by = 'CO_ENTIDADE')
 
 # Recompor o dataframe de matrículas
-matriculas <- rbind(escolas_com_geocode, escolas_sem_geocode) %>% arrange(CO_ENTIDADE)
+matriculas <- rbind(escolas_com_geocode, escolas_sem_geocode) %>% arrange(CO_ENTIDADE) %>% filter(!is.na(Latitude))
 
 # Tranformar em sf para exportar
 matriculas <- 
@@ -385,5 +405,22 @@ matriculas <-
 
 
 # Gravar resultados
-out_file <- sprintf('%s/matriculas_censo_escolar_2019_georref.gpkg', pasta_opaop_dados)
+out_file <- sprintf('%s/02_matriculas_censo_escolar_2023_georref.gpkg', pasta_ttmatrix_24_28)
 st_write(matriculas, out_file, driver = 'GPKG', append = FALSE)
+
+
+# ------------------------------------------------------------------------------
+# Agregar resultados por hexágonos - FAZER NO QGIS
+# ------------------------------------------------------------------------------
+
+# Abrir camada yellow_dados/00_dados_originais/IPEA/aop_hex_grid_v2.gpkg
+# Abrir camada yellow_dados/14_aop_2024_2028/02_ttmatrix_2024_2028/matriculas_censo_escolar_2023_georref.gpkg
+
+# Menu > Vector > Geoprocessing Tools > Intersection
+# Input layer: 02_matriculas_censo_escolar_2023_georref.gpkg
+# Overlay layer: aop_hex_grid_v2.gpkg
+# Input fields to keep: [ manter vazio ]
+# Output fields to keep: id_hex
+
+# Salvar a camada resultante "Intersection" como:
+# yellow_dados/14_aop_2024_2028/02_ttmatrix_2024_2028/02_matriculas_censo_escolar_2023_associadas_a_hexagonos.gpkg

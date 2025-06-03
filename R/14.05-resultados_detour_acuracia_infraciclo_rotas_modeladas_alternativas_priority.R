@@ -7,12 +7,12 @@ library('tidylog')
 
 # Estrutura de pastas
 pasta_dados        <- "../../yellow_dados"
-# pasta_map_matching <- sprintf("%s/05_map_matching", pasta_dados)
-pasta_orig_modalt  <- sprintf("%s/11_rotas_modeladas_com_alternativas", pasta_dados)
+pasta_aop_2024_2028 <- sprintf("%s/14_aop_2024_2028", pasta_dados)
+pasta_lts_priority  <- sprintf("%s/02_teste_lts_priority", pasta_aop_2024_2028)
 
 
 # Arquivo de resultados das rotas modeladas
-resultados <- sprintf('%s/02_ttmatrix_rotas_modeladas_alternativas_acuracia_infraciclo_carac_viagens.csv', pasta_orig_modalt)
+resultados <- sprintf('%s/02_ttmatrix_rotas_modeladas_alternativas_acuracia_infraciclo_carac_viagens.csv', pasta_lts_priority)
 resultados <- read_delim(resultados, delim = ';', col_types = 'cciccddddddiiddddddccccddddddcdddd')
 resultados <- resultados %>% select(-tmp_id)
 head(resultados)
@@ -22,11 +22,11 @@ resultados %>% select(trip_id) %>% distinct() %>% nrow()
 
 # Quantas viagens possuem mais de uma alternativa?
 resultados %>% group_by(alt) %>% tally() %>% mutate(perc = n/sum(n)*100)
-#    alt      n  perc
-#   <int>  <int> <dbl>
-# 1     1 129755 66.0 
-# 2     2  48316 24.6 
-# 3     3  18484  9.40
+# alt      n  perc
+# <int>  <int> <dbl>
+# 1     1 129755 70.2 
+# 2     2  41321 22.3 
+# 3     3  13823  7.48
 
 
 # Definir quantis para visualizar resultados
@@ -85,27 +85,27 @@ nrow(peso)
 # peso %>% select(alt) %>% distinct()
 
 
-# Resultado geral por pontos: 61.10039
+# Resultado geral por pontos: 62.68637
 sum(peso$pts_intsct) / sum(peso$pts_viagem) * 100
-# Média de acurácia por pontos: 68.06025
+# Média de acurácia por pontos: 68.98881
 mean(peso$acuracia_pontos)
-# Mediana por pontos: 75.67568
+# Mediana por pontos: 77.41935
 median(peso$acuracia_pontos)
 # Quantis por pontos
 quantile(peso$acuracia_pontos, probs = quantis, na.rm = TRUE) %>% round(2)
-#   25% 33.33%    50%    75%    85%    95%    99% 
-# 40.63  52.38  75.68 100.00 100.00 100.00 100.00 
+# 25% 33.33%    50%    75%    85%    95%    99% 
+# 42.19  54.29  77.42 100.00 100.00 100.00 100.00 
 data.frame(freq = quantile(peso$acuracia_pontos, probs = quantis2, na.rm = TRUE)) %>% 
   rownames_to_column(var = 'desc') %>% 
   add_row(desc = 'Min',
           freq = min(peso$acuracia_pontos), 
           .before = 1)
-#     desc        freq
+# desc        freq
 # 1    Min   0.9787928
-# 2    25%  40.6333556
-# 3 33.33%  52.3809524
-# 4    50%  75.6756757
-# 5 66.66%  95.8333333
+# 2    25%  42.1920159
+# 3 33.33%  54.2857143
+# 4    50%  77.4193548
+# 5 66.66%  96.6101695
 # 6    75% 100.0000000
 # 7    85% 100.0000000
 # 8    95% 100.0000000
@@ -125,29 +125,29 @@ hist(peso$distance, pch = 16, cex = 1, breaks = 100)
 #   rownames_to_column(var = 'quantiles_ptos')
 
 
-# Média de acurácia  por extensão de linhas: 64.04311
+# Média de acurácia  por extensão de linhas: 64.78
 mean(peso$acuracia_linhas)
-# Mediana  por extensão de linhas: 69.48352
+# Mediana  por extensão de linhas: 70.89052
 median(peso$acuracia_linhas)
 # Quantis  por extensão de linhas: 
 quantile(peso$acuracia_linhas, probs = quantis, na.rm = TRUE) %>% round(2)
-#   25% 33.33%    50%    75%    85%    95%    99% 
-# 37.16  48.71  69.48  95.93  98.87 100.00 100.00 
+# 25% 33.33%    50%    75%    85%    95%    99% 
+# 38.42  50.36  70.89  95.93  98.78 100.00 100.00 
 data.frame(freq = quantile(peso$acuracia_linhas, probs = quantis2, na.rm = TRUE)) %>% 
   rownames_to_column(var = 'desc') %>% 
   add_row(desc = 'Min',
           freq = min(peso$acuracia_linhas), 
           .before = 1)
-#     desc       freq
-# 1    Min   1.047996
-# 2    25%  37.161560
-# 3 33.33%  48.713242
-# 4    50%  69.483519
-# 5 66.66%  88.037733
-# 6    75%  95.926277
-# 7    85%  98.866502
-# 8    95% 100.000000
-# 9   100% 100.000000
+# desc        freq
+# 1    Min   0.9996882
+# 2    25%  38.4213453
+# 3 33.33%  50.3593033
+# 4    50%  70.8905237
+# 5 66.66%  88.7822772
+# 6    75%  95.9303443
+# 7    85%  98.7842503
+# 8    95% 100.0000000
+# 9   100% 100.0000000
 # Boxplot
 boxplot(peso$acuracia_linhas)
 # Histograma
@@ -172,12 +172,12 @@ peso %>% filter(detour_modalt < 0.99) %>% nrow()
 detour
 # ATENÇÃO: Fatores de detour menores do que 1 são por alguma pequena diferença
 # entre o comprimento da linha reta e da rota calculada
-#   summary detour_modalt
+# summary detour_modalt
 # 1    Min.      0.000000
-# 2 1st Qu.      1.185289
-# 3  Median      1.348063
-# 4    Mean      1.560524
-# 5 3rd Qu.      1.595694
+# 2 1st Qu.      1.191246
+# 3  Median      1.355791
+# 4    Mean      1.567650
+# 5 3rd Qu.      1.603753
 # 6    Max.    336.056382
 
 
@@ -188,7 +188,7 @@ qnt <- quantile(x, probs = c(0.25, 0.75))
 # Outliers extremos estão a 3 * IQR
 H <- 3 * IQR(x)
 # Retirar outliers do dataframe
-# filter: removed 7,992 rows (6%), 121,763 rows remaining
+# filter: removed 4,317 rows (3%), 125,438 rows remaining
 detour_sem_outliers <- peso %>% filter(!(detour_modalt < (qnt[1] - H) | detour_modalt > (qnt[2] + H)))
 # Fatores de detour menores do que 0.99
 detour_sem_outliers %>% filter(detour_modalt < 0.99) %>% nrow()
@@ -197,13 +197,13 @@ rm(x, qnt, H)
 nrow(detour_sem_outliers)
 detour_sem_outliers <- summary(detour_sem_outliers$detour_modalt) %>% t() %>% t() %>% as.data.frame() %>% select(summary = Var1, detour_modalt = Freq)
 detour_sem_outliers
-#   summary detour_modalt
+# summary detour_modalt
 # 1    Min.      0.000000
-# 2 1st Qu.      1.179584
-# 3  Median      1.337166
-# 4    Mean      1.421063
-# 5 3rd Qu.      1.556868
-# 6    Max.      2.826637
+# 2 1st Qu.      1.185405
+# 3  Median      1.345106
+# 4    Mean      1.428217
+# 5 3rd Qu.      1.565743
+# 6    Max.      2.841269
 
 
 
@@ -275,25 +275,25 @@ peso_nao_cm <- peso %>% filter(vg_contramao == 'não')
 nrow(peso_nao_cm)
 head(peso_nao_cm)
 
-# Resultado geral por pontos: 72.69268
+# Resultado geral por pontos: 74.45087
 sum(peso_nao_cm$pts_intsct) / sum(peso_nao_cm$pts_viagem) * 100
-# Média de acurácia por pontos: 81.39587
+# Média de acurácia por pontos: 82.38155
 mean(peso_nao_cm$acuracia_pontos)
 # Mediana por pontos: 100
 median(peso_nao_cm$acuracia_pontos)
 # Quantis
 quantile(peso_nao_cm$acuracia_pontos, probs = quantis, na.rm = TRUE) %>% round(2)
-#   25% 33.33%    50%    75%    85%    95%    99% 
-# 66.67  84.13 100.00 100.00 100.00 100.00 100.00 
+# 25% 33.33%    50%    75%    85%    95%    99% 
+# 70.00  86.96 100.00 100.00 100.00 100.00 100.00 
 data.frame(freq = quantile(peso_nao_cm$acuracia_pontos, probs = quantis2, na.rm = TRUE)) %>% 
   rownames_to_column(var = 'desc') %>% 
   add_row(desc = 'Min',
           freq = min(peso_nao_cm$acuracia_pontos), 
           .before = 1)
-#     desc        freq
+# desc        freq
 # 1    Min   0.9868421
-# 2    25%  66.6666667
-# 3 33.33%  84.1269841
+# 2    25%  70.0000000
+# 3 33.33%  86.9565217
 # 4    50% 100.0000000
 # 5 66.66% 100.0000000
 # 6    75% 100.0000000
@@ -315,29 +315,29 @@ hist(peso_nao_cm$distance, pch = 16, cex = 1, breaks = 100)
 #   rownames_to_column(var = 'quantiles_ptos')
 
 
-# Média de acurácia  por extensão de linhas: 80.47692
+# Média de acurácia  por extensão de linhas: 81.24671
 mean(peso_nao_cm$acuracia_linhas)
-# Mediana  por extensão de linhas: 95.06766
+# Mediana  por extensão de linhas: 95.20729
 median(peso_nao_cm$acuracia_linhas)
 # Quantis  por extensão de linhas: 
 quantile(peso_nao_cm$acuracia_linhas, probs = quantis, na.rm = TRUE) %>% round(2)
-#   25% 33.33%    50%    75%    85%    95%    99% 
-# 67.94  79.45  95.07  99.11  99.97 100.00 100.00 
+# 25% 33.33%    50%    75%    85%    95%    99% 
+# 69.99  81.08  95.21  99.01  99.95 100.00 100.00 
 data.frame(freq = quantile(peso_nao_cm$acuracia_linhas, probs = quantis2, na.rm = TRUE)) %>% 
 rownames_to_column(var = 'desc') %>% 
   add_row(desc = 'Min',
           freq = min(peso_nao_cm$acuracia_linhas), 
           .before = 1)
-#     desc      freq
-# 1    Min   1.53576
-# 2    25%  67.94032
-# 3 33.33%  79.44837
-# 4    50%  95.06766
-# 5 66.66%  98.29214
-# 6    75%  99.10862
-# 7    85%  99.96582
-# 8    95% 100.00000
-# 9   100% 100.00000
+# desc       freq
+# 1    Min   1.965795
+# 2    25%  69.987189
+# 3 33.33%  81.077053
+# 4    50%  95.207290
+# 5 66.66%  98.175216
+# 6    75%  99.012059
+# 7    85%  99.953471
+# 8    95% 100.000000
+# 9   100% 100.000000
 # Boxplot
 boxplot(peso_nao_cm$acuracia_linhas)
 # Histograma
@@ -362,12 +362,12 @@ peso_nao_cm %>% filter(detour_modalt < 0.99) %>% nrow()
 detour
 # ATENÇÃO: Fatores de detour menores do que 1 são por alguma pequena diferença
 # entre o comprimento da linha reta e da rota calculada
-#   summary detour_modalt
+# summary detour_modalt
 # 1    Min.     0.5802978
-# 2 1st Qu.     1.0995070
-# 3  Median     1.2412986
-# 4    Mean     1.4394395
-# 5 3rd Qu.     1.4149146
+# 2 1st Qu.     1.1033834
+# 3  Median     1.2470091
+# 4    Mean     1.4448817
+# 5 3rd Qu.     1.4224861
 # 6    Max.   336.0563818
 
 
@@ -387,13 +387,13 @@ rm(x, qnt, H)
 nrow(detour_sem_outliers)
 detour_sem_outliers <- summary(detour_sem_outliers$detour_modalt) %>% t() %>% t() %>% as.data.frame() %>% select(summary = Var1, detour_modalt = Freq)
 detour_sem_outliers
-#   summary detour_modalt
+# summary detour_modalt
 # 1    Min.     0.5802978
-# 2 1st Qu.     1.0953396
-# 3  Median     1.2311637
-# 4    Mean     1.2854036
-# 5 3rd Qu.     1.3958747
-# 6    Max.     2.3609761
+# 2 1st Qu.     1.0990316
+# 3  Median     1.2370494
+# 4    Mean     1.2911944
+# 5 3rd Qu.     1.4023891
+# 6    Max.     2.3791212
 
 
 
@@ -524,27 +524,27 @@ detour_sem_outliers
 tempo <- resultados %>% group_by(trip_id) %>% filter(time == min(time)) %>% ungroup()
 
 
-# Resultado geral por pontos: 61.06157
+# Resultado geral por pontos: 59.55789
 sum(tempo$pts_intsct) / sum(tempo$pts_viagem) * 100
-# Média de acurácia por pontos: 68.03887
+# Média de acurácia por pontos: 67.15328
 mean(tempo$acuracia_pontos)
-# Mediana por pontos: 75.67568
+# Mediana por pontos: 74.19355
 median(tempo$acuracia_pontos)
 # Quantis por pontos
 quantile(tempo$acuracia_pontos, probs = quantis, na.rm = TRUE) %>% round(2)
-#   25% 33.33%    50%    75%    85%    95%    99% 
-# 40.62  52.38  75.68 100.00 100.00 100.00 100.00  
+# 25% 33.33%    50%    75%    85%    95%    99% 
+# 38.71  50.00  74.19 100.00 100.00 100.00 100.00 
 data.frame(freq = quantile(tempo$acuracia_pontos, probs = quantis2, na.rm = TRUE)) %>% 
   rownames_to_column(var = 'desc') %>% 
   add_row(desc = 'Min',
           freq = min(tempo$acuracia_pontos), 
-          .before = 1)
-#     desc        freq
+          .before = 1) 
+# desc        freq
 # 1    Min   0.9787928
-# 2    25%  40.6250000
-# 3 33.33%  52.3809524
-# 4    50%  75.6756757
-# 5 66.66%  95.8333333
+# 2    25%  38.7096774
+# 3 33.33%  50.0000000
+# 4    50%  74.1935484
+# 5 66.66%  95.4545455
 # 6    75% 100.0000000
 # 7    85% 100.0000000
 # 8    95% 100.0000000
@@ -566,27 +566,27 @@ hist(tempo$distance, pch = 16, cex = 1, breaks = 100)
 # # pivot_wider(id_cols = perfil_rotas, names_from = quantiles)
 
 
-# Média de acurácia  por extensão de linhas: 64.02095
+# Média de acurácia  por extensão de linhas: 62.975
 mean(tempo$acuracia_linhas)
-# Mediana  por extensão de linhas: 69.43903
+# Mediana  por extensão de linhas: 67.96318
 median(tempo$acuracia_linhas)
 # Quantis  por extensão de linhas: 
 quantile(tempo$acuracia_linhas, probs = quantis, na.rm = TRUE) %>% round(2)
-#   25% 33.33%    50%    75%    85%    95%    99% 
-# 37.16  48.70  69.44  95.89  98.85 100.00 100.00 
+# 25% 33.33%    50%    75%    85%    95%    99% 
+# 34.90  46.38  67.96  95.59  98.73 100.00 100.00 
 data.frame(freq = quantile(tempo$acuracia_linhas, probs = quantis2, na.rm = TRUE)) %>% 
   rownames_to_column(var = 'desc') %>% 
   add_row(desc = 'Min',
           freq = min(tempo$acuracia_linhas), 
           .before = 1)
-#     desc       freq
+# desc       freq
 # 1    Min   1.047996
-# 2    25%  37.161145
-# 3 33.33%  48.696697
-# 4    50%  69.439028
-# 5 66.66%  87.997680
-# 6    75%  95.891231
-# 7    85%  98.846333
+# 2    25%  34.896239
+# 3 33.33%  46.383615
+# 4    50%  67.963183
+# 5 66.66%  87.429783
+# 6    75%  95.593176
+# 7    85%  98.730874
 # 8    95% 100.000000
 # 9   100% 100.000000
 # Boxplot
@@ -613,13 +613,12 @@ tempo %>% filter(detour_modalt < 0.99) %>% nrow()
 detour
 # ATENÇÃO: Fatores de detour menores do que 1 são por alguma pequena diferença
 # entre o comprimento da linha reta e da rota calculada
-#   summary detour_modalt
-#   summary detour_modalt
+# summary detour_modalt
 # 1    Min.      0.000000
-# 2 1st Qu.      1.185208
-# 3  Median      1.347985
-# 4    Mean      1.560356
-# 5 3rd Qu.      1.595366
+# 2 1st Qu.      1.189664
+# 3  Median      1.353493
+# 4    Mean      1.565458
+# 5 3rd Qu.      1.600337
 # 6    Max.    336.056382
 
 
@@ -639,13 +638,13 @@ rm(x, qnt, H)
 nrow(detour_sem_outliers)
 detour_sem_outliers <- summary(detour_sem_outliers$detour_modalt) %>% t() %>% t() %>% as.data.frame() %>% select(summary = Var1, detour_modalt = Freq)
 detour_sem_outliers
-#   summary detour_modalt
+# summary detour_modalt
 # 1    Min.      0.000000
-# 2 1st Qu.      1.179522
-# 3  Median      1.337033
-# 4    Mean      1.420895
-# 5 3rd Qu.      1.556493
-# 6    Max.      2.825772
+# 2 1st Qu.      1.183936
+# 3  Median      1.342639
+# 4    Mean      1.425612
+# 5 3rd Qu.      1.561895
+# 6    Max.      2.832264
 
 
 
@@ -718,21 +717,33 @@ tempo_nao_cm <- tempo %>% filter(vg_contramao == 'não')
 nrow(tempo_nao_cm)
 head(tempo_nao_cm)
 
-# Resultado geral por pontos: 72.63067
+# Resultado geral por pontos: 71.02713
 sum(tempo_nao_cm$pts_intsct) / sum(tempo_nao_cm$pts_viagem) * 100
-# Média de acurácia por pontos: 81.34728
+# Média de acurácia por pontos: 80.40581
 mean(tempo_nao_cm$acuracia_pontos)
 # Mediana por pontos: 100
 median(tempo_nao_cm$acuracia_pontos)
 # Quantis
 quantile(tempo_nao_cm$acuracia_pontos, probs = quantis, na.rm = TRUE) %>% round(2)
-#   25% 33.33%    50%    75%    85%    95%    99% 
-# 66.67  84.00 100.00 100.00 100.00 100.00 100.00 
+# 25% 33.33%    50%    75%    85%    95%    99% 
+# 63.33  82.35 100.00 100.00 100.00 100.00 100.00 
 data.frame(freq = quantile(tempo_nao_cm$acuracia_pontos, probs = quantis2, na.rm = TRUE)) %>% 
   rownames_to_column(var = 'desc') %>% 
   add_row(desc = 'Min',
           freq = min(tempo_nao_cm$acuracia_pontos), 
           .before = 1)
+# desc        freq
+# 1    Min   0.9868421
+# 2    25%  63.3333333
+# 3 33.33%  82.3529412
+# 4    50% 100.0000000
+# 5 66.66% 100.0000000
+# 6    75% 100.0000000
+# 7    85% 100.0000000
+# 8    95% 100.0000000
+# 9   100% 100.0000000
+
+
 # Boxplot
 boxplot(tempo_nao_cm$acuracia_pontos)
 # Histograma
@@ -748,27 +759,27 @@ hist(tempo_nao_cm$dist_total, pch = 16, cex = 1, breaks = 100)
 #   rownames_to_column(var = 'quantiles_ptos')
 
 
-# Média de acurácia  por extensão de linhas: 80.4223
+# Média de acurácia  por extensão de linhas: 79.29813
 mean(tempo_nao_cm$acuracia_linhas)
-# Mediana  por extensão de linhas: 95.00635
+# Mediana  por extensão de linhas: 94.75123
 median(tempo_nao_cm$acuracia_linhas)
 # Quantis  por extensão de linhas: 
 quantile(tempo_nao_cm$acuracia_linhas, probs = quantis, na.rm = TRUE) %>% round(2)
-#   25% 33.33%    50%    75%    85%    95%    99% 
-# 67.84  79.35  95.01  99.09  99.96 100.00 100.00 
+# 25% 33.33%    50%    75%    85%    95%    99% 
+# 65.39  78.13  94.75  98.98  99.94 100.00 100.00 
 data.frame(freq = quantile(tempo_nao_cm$acuracia_linhas, probs = quantis2, na.rm = TRUE)) %>% 
   rownames_to_column(var = 'desc') %>% 
   add_row(desc = 'Min',
           freq = min(tempo_nao_cm$acuracia_linhas), 
           .before = 1)
-#     desc      freq
+# desc      freq
 # 1    Min   1.53576
-# 2    25%  67.84079
-# 3 33.33%  79.35120
-# 4    50%  95.00635
-# 5 66.66%  98.27125
-# 6    75%  99.08989
-# 7    85%  99.96230
+# 2    25%  65.38850
+# 3 33.33%  78.13142
+# 4    50%  94.75123
+# 5 66.66%  98.12267
+# 6    75%  98.97855
+# 7    85%  99.93672
 # 8    95% 100.00000
 # 9   100% 100.00000
 # Boxplot
@@ -795,12 +806,12 @@ tempo_nao_cm %>% filter(detour_modalt < 0.99) %>% nrow()
 detour
 # ATENÇÃO: Fatores de detour menores do que 1 são por alguma pequena diferença
 # entre o comprimento da linha reta e da rota calculada
-#   summary detour_modalt
+# summary detour_modalt
 # 1    Min.     0.5802978
-# 2 1st Qu.     1.0996001
-# 3  Median     1.2411578
-# 4    Mean     1.4392726
-# 5 3rd Qu.     1.4144001
+# 2 1st Qu.     1.1025859
+# 3  Median     1.2451357
+# 4    Mean     1.4433601
+# 5 3rd Qu.     1.4197918
 # 6    Max.   336.0563818
 
 
@@ -820,13 +831,13 @@ rm(x, qnt, H)
 nrow(detour_sem_outliers)
 detour_sem_outliers <- summary(detour_sem_outliers$detour_modalt) %>% t() %>% t() %>% as.data.frame() %>% select(summary = Var1, detour_modalt = Freq)
 detour_sem_outliers
-#   summary detour_modalt
+# summary detour_modalt
 # 1    Min.     0.5802978
-# 2 1st Qu.     1.0953550
-# 3  Median     1.2310419
-# 4    Mean     1.2852455
-# 5 3rd Qu.     1.3955338
-# 6    Max.     2.3586210
+# 2 1st Qu.     1.0982809
+# 3  Median     1.2351057
+# 4    Mean     1.2894324
+# 5 3rd Qu.     1.4000804
+# 6    Max.     2.3713668
 
 
 
@@ -995,28 +1006,28 @@ detour_sem_outliers
 dist <- resultados %>% group_by(trip_id) %>% filter(distance == min(distance)) %>% ungroup()
 nrow(dist)
 
-# Resultado geral por pontos: 60.35085
+# Resultado geral por pontos: 61.13368
 sum(dist$pts_intsct) / sum(dist$pts_viagem) * 100
-# Média de acurácia por pontos: 67.60759
+# Média de acurácia por pontos: 68.09378
 mean(dist$acuracia_pontos)
-# Mediana por pontos: 75
+# Mediana por pontos: 76
 median(dist$acuracia_pontos)
 # Quantis por pontos
 quantile(dist$acuracia_pontos, probs = quantis, na.rm = TRUE) %>% round(2)
 # Modelo sem ajustar LTS:
-#   25% 33.33%    50%    75%    85%    95%    99% 
-# 40.00  51.47  75.00 100.00 100.00 100.00 100.00
+# 25% 33.33%    50%    75%    85%    95%    99% 
+# 40.52  52.38  76.00 100.00 100.00 100.00 100.00 
 data.frame(freq = quantile(dist$acuracia_pontos, probs = quantis2, na.rm = TRUE)) %>% 
   rownames_to_column(var = 'desc') %>% 
   add_row(desc = 'Min',
           freq = min(dist$acuracia_pontos), 
           .before = 1)
-#     desc        freq
-# 1    Min   0.7371007
-# 2    25%  40.0000000
-# 3 33.33%  51.4705882
-# 4    50%  75.0000000
-# 5 66.66%  95.5056180
+# desc        freq
+# 1    Min   0.9787928
+# 2    25%  40.5172414
+# 3 33.33%  52.3809524
+# 4    50%  76.0000000
+# 5 66.66%  96.1538462
 # 6    75% 100.0000000
 # 7    85% 100.0000000
 # 8    95% 100.0000000
@@ -1036,29 +1047,29 @@ hist(dist$distance, pch = 16, cex = 1, breaks = 100)
 #   rownames_to_column(var = 'quantiles_ptos')
 
 
-# Média de acurácia  por extensão de linhas: 63.61581
+# Média de acurácia  por extensão de linhas:  63.94749
 mean(dist$acuracia_linhas)
-# Mediana  por extensão de linhas: 68.73781
+# Mediana  por extensão de linhas: 69.58426
 median(dist$acuracia_linhas)
 # Quantis  por extensão de linhas: 
 quantile(dist$acuracia_linhas, probs = quantis, na.rm = TRUE) %>% round(2)
-#   25% 33.33%    50%    75%    85%    95%    99% 
-# 36.35  47.83  68.74  95.85  98.88 100.00 100.00 
+# 25% 33.33%    50%    75%    85%    95%    99% 
+# 36.81  48.58  69.58  95.80  98.77 100.00 100.00 
 data.frame(freq = quantile(dist$acuracia_linhas, probs = quantis2, na.rm = TRUE)) %>% 
   rownames_to_column(var = 'desc') %>% 
   add_row(desc = 'Min',
           freq = min(dist$acuracia_linhas), 
           .before = 1)
-#     desc       freq
-# 1    Min   1.228205
-# 2    25%  36.353129
-# 3 33.33%  47.833456
-# 4    50%  68.737810
-# 5 66.66%  87.650045
-# 6    75%  95.846122
-# 7    85%  98.875982
-# 8    95% 100.000000
-# 9   100% 100.000000
+# desc      freq
+# 1    Min   1.18826
+# 2    25%  36.80923
+# 3 33.33%  48.58416
+# 4    50%  69.58426
+# 5 66.66%  88.14342
+# 6    75%  95.80476
+# 7    85%  98.76597
+# 8    95% 100.00000
+# 9   100% 100.00000
 # Boxplot
 boxplot(dist$acuracia_linhas)
 # Histograma
@@ -1084,12 +1095,12 @@ dist %>% filter(detour_modalt < 0.99) %>% nrow()
 detour
 # ATENÇÃO: Fatores de detour menores do que 1 são por alguma pequena diferença
 # entre o comprimento da linha reta e da rota calculada
-#   summary detour_modalt
+# summary detour_modalt
 # 1    Min.      0.000000
-# 2 1st Qu.      1.184207
-# 3  Median      1.346549
-# 4    Mean      1.558764
-# 5 3rd Qu.      1.593352
+# 2 1st Qu.      1.188379
+# 3  Median      1.351262
+# 4    Mean      1.563663
+# 5 3rd Qu.      1.598162
 # 6    Max.    336.056382
 
 
@@ -1109,13 +1120,13 @@ rm(x, qnt, H)
 nrow(detour_sem_outliers)
 detour_sem_outliers <- summary(detour_sem_outliers$detour_modalt) %>% t() %>% t() %>% as.data.frame() %>% select(summary = Var1, detour_modalt = Freq)
 detour_sem_outliers
-#   summary detour_modalt
+# summary detour_modalt
 # 1    Min.      0.000000
-# 2 1st Qu.      1.178501
-# 3  Median      1.335494
-# 4    Mean      1.419290
-# 5 3rd Qu.      1.554618
-# 6    Max.      2.820430
+# 2 1st Qu.      1.182736
+# 3  Median      1.340554
+# 4    Mean      1.423803
+# 5 3rd Qu.      1.559205
+# 6    Max.      2.827307
 
 
 
@@ -1187,26 +1198,25 @@ dist_nao_cm <- dist %>% filter(vg_contramao == 'não')
 nrow(dist_nao_cm)
 head(dist_nao_cm)
 
-# Resultado geral por pontos: 71.86248
+# Resultado geral por pontos: 72.71009
 sum(dist_nao_cm$pts_intsct) / sum(dist_nao_cm$pts_viagem) * 100
-# Média de acurácia por pontos: 80.89652
+# Média de acurácia por pontos: 81.43357
 mean(dist_nao_cm$acuracia_pontos)
 # Mediana por pontos: 100
 median(dist_nao_cm$acuracia_pontos)
 # Quantis
 quantile(dist_nao_cm$acuracia_pontos, probs = quantis, na.rm = TRUE) %>% round(2)
-# Modelo sem ajustar LTS:
-#   25% 33.33%    50%    75%    85%    95%    99% 
-# 65.29  82.76 100.00 100.00 100.00 100.00 100.00
+# 25% 33.33%    50%    75%    85%    95%    99% 
+# 66.97  84.99 100.00 100.00 100.00 100.00 100.00 
 data.frame(freq = quantile(dist_nao_cm$acuracia_pontos, probs = quantis2, na.rm = TRUE)) %>% 
   rownames_to_column(var = 'desc') %>% 
   add_row(desc = 'Min',
           freq = min(dist_nao_cm$acuracia_pontos), 
           .before = 1)
-#     desc        freq
-# 1    Min   0.7371007
-# 2    25%  65.2892562
-# 3 33.33%  82.7586207
+# desc        freq
+# 1    Min   0.9868421
+# 2    25%  66.9724771
+# 3 33.33%  84.9900104
 # 4    50% 100.0000000
 # 5 66.66% 100.0000000
 # 6    75% 100.0000000
@@ -1228,27 +1238,27 @@ hist(dist_nao_cm$dist_total, pch = 16, cex = 1, breaks = 100)
 #   rownames_to_column(var = 'quantiles_ptos')
 
 
-# Média de acurácia  por extensão de linhas: 80.02022
+# Média de acurácia  por extensão de linhas:  80.37477
 mean(dist_nao_cm$acuracia_linhas)
-# Mediana  por extensão de linhas: 94.93231
+# Mediana  por extensão de linhas: 95.057
 median(dist_nao_cm$acuracia_linhas)
 # Quantis  por extensão de linhas: 
 quantile(dist_nao_cm$acuracia_linhas, probs = quantis, na.rm = TRUE) %>% round(2)
-#   25% 33.33%    50%    75%    85%    95%    99% 
-# 66.79  78.57  94.93  99.13  99.97 100.00 100.00 
+# 25% 33.33%    50%    75%    85%    95%    99% 
+# 67.96  79.70  95.06  99.01  99.95 100.00 100.00 
 data.frame(freq = quantile(dist_nao_cm$acuracia_linhas, probs = quantis2, na.rm = TRUE)) %>% 
   rownames_to_column(var = 'desc') %>% 
   add_row(desc = 'Min',
           freq = min(dist_nao_cm$acuracia_linhas), 
           .before = 1)
-#     desc      freq
+# desc      freq
 # 1    Min   1.53576
-# 2    25%  66.78954
-# 3 33.33%  78.56902
-# 4    50%  94.93231
-# 5 66.66%  98.31270
-# 6    75%  99.12801
-# 7    85%  99.96729
+# 2    25%  67.96318
+# 3 33.33%  79.69766
+# 4    50%  95.05700
+# 5 66.66%  98.17011
+# 6    75%  99.00985
+# 7    85%  99.94868
 # 8    95% 100.00000
 # 9   100% 100.00000
 # Boxplot
@@ -1274,12 +1284,12 @@ dist_nao_cm %>% filter(detour_modalt < 0.99) %>% nrow()
 detour
 # ATENÇÃO: Fatores de detour menores do que 1 são por alguma pequena diferença
 # entre o comprimento da linha reta e da rota calculada
-#   summary detour_modalt
+# summary detour_modalt
 # 1    Min.     0.5802978
-# 2 1st Qu.     1.0987965
-# 3  Median     1.2400624
-# 4    Mean     1.4376891
-# 5 3rd Qu.     1.4119849
+# 2 1st Qu.     1.1021650
+# 3  Median     1.2437560
+# 4    Mean     1.4416017
+# 5 3rd Qu.     1.4172631
 # 6    Max.   336.0563818
 
 
@@ -1299,13 +1309,13 @@ detour_sem_outliers %>% filter(detour_modalt < 0.99) %>% nrow()
 nrow(detour_sem_outliers)
 detour_sem_outliers <- summary(detour_sem_outliers$detour_modalt) %>% t() %>% t() %>% as.data.frame() %>% select(summary = Var1, detour_modalt = Freq)
 detour_sem_outliers
-#   summary detour_modalt
+# summary detour_modalt
 # 1    Min.     0.5802978
-# 2 1st Qu.     1.0945629
-# 3  Median     1.2299905
-# 4    Mean     1.2835838
-# 5 3rd Qu.     1.3936300
-# 6    Max.     2.3513760
+# 2 1st Qu.     1.0978657
+# 3  Median     1.2335919
+# 4    Mean     1.2876017
+# 5 3rd Qu.     1.3979408
+# 6    Max.     2.3625229
 
 
 # # -------------------------- Com contramão -------------------------------------
@@ -1475,27 +1485,27 @@ infraciclo <- infraciclo %>% group_by(trip_id) %>% filter(weight == min(weight))
 nrow(infraciclo)
 
 
-# Resultado geral por pontos: 61.47631
+# Resultado geral por pontos: 62.18612
 sum(infraciclo$pts_intsct) / sum(infraciclo$pts_viagem) * 100
-# Média de acurácia por pontos: 68.29225
+# Média de acurácia por pontos: 68.67904
 mean(infraciclo$acuracia_pontos)
-# Mediana por pontos: 75.90361
+# Mediana por pontos: 76.71233
 median(infraciclo$acuracia_pontos)
 # Quantis por pontos
 quantile(infraciclo$acuracia_pontos, probs = quantis, na.rm = TRUE) %>% round(2)
-#   25% 33.33%    50%    75%    85%    95%    99% 
-# 41.25  52.83  75.90 100.00 100.00 100.00 100.00 
+# 25% 33.33%    50%    75%    85%    95%    99% 
+# 41.67  53.66  76.71 100.00 100.00 100.00 100.00 
 data.frame(freq = quantile(infraciclo$acuracia_pontos, probs = quantis2, na.rm = TRUE)) %>% 
   rownames_to_column(var = 'desc') %>% 
   add_row(desc = 'Min',
           freq = min(infraciclo$acuracia_pontos), 
           .before = 1)
-#     desc        freq
+# desc        freq
 # 1    Min   0.9787928
-# 2    25%  41.2500000
-# 3 33.33%  52.8301887
-# 4    50%  75.9036145
-# 5 66.66%  95.7335194
+# 2    25%  41.6666667
+# 3 33.33%  53.6585366
+# 4    50%  76.7123288
+# 5 66.66%  96.3636364
 # 6    75% 100.0000000
 # 7    85% 100.0000000
 # 8    95% 100.0000000
@@ -1515,29 +1525,29 @@ hist(infraciclo$distance, pch = 16, cex = 1, breaks = 100)
 #   rownames_to_column(var = 'quantiles_ptos')
 
 
-# Média de acurácia  por extensão de linhas: 64.00448
+# Média de acurácia  por extensão de linhas: 64.21975
 mean(infraciclo$acuracia_linhas)
-# Mediana  por extensão de linhas: 69.49522
+# Mediana  por extensão de linhas: 69.99772
 median(infraciclo$acuracia_linhas)
 # Quantis  por extensão de linhas: 
 quantile(infraciclo$acuracia_linhas, probs = quantis, na.rm = TRUE) %>% round(2)
-#   25% 33.33%    50%    75%    85%    95%    99% 
-# 37.20  48.77  69.50  95.68  98.79 100.00 100.00 
+# 25% 33.33%    50%    75%    85%    95%    99% 
+# 37.45  49.29  70.00  95.74  98.73 100.00 100.00 
 data.frame(freq = quantile(infraciclo$acuracia_linhas, probs = quantis2, na.rm = TRUE)) %>% 
   rownames_to_column(var = 'desc') %>% 
   add_row(desc = 'Min',
           freq = min(infraciclo$acuracia_linhas), 
           .before = 1)
-#     desc       freq
-# 1    Min   1.047996
-# 2    25%  37.200884
-# 3 33.33%  48.774724
-# 4    50%  69.495222
-# 5 66.66%  87.790486
-# 6    75%  95.679910
-# 7    85%  98.791121
-# 8    95% 100.000000
-# 9   100% 100.000000
+# desc        freq
+# 1    Min   0.9996882
+# 2    25%  37.4491729
+# 3 33.33%  49.2937570
+# 4    50%  69.9977186
+# 5 66.66%  88.2270330
+# 6    75%  95.7357930
+# 7    85%  98.7303385
+# 8    95% 100.0000000
+# 9   100% 100.0000000
 # Boxplot
 boxplot(infraciclo$acuracia_linhas)
 # Histograma
@@ -1562,12 +1572,12 @@ infraciclo %>% filter(detour_modalt < 0.99) %>% nrow()
 detour
 # ATENÇÃO: Fatores de detour menores do que 1 são por alguma pequena diferença
 # entre o comprimento da linha reta e da rota calculada
-#   summary detour_modalt
+# summary detour_modalt
 # 1    Min.      0.000000
-# 2 1st Qu.      1.194496
-# 3  Median      1.362600
-# 4    Mean      1.575161
-# 5 3rd Qu.      1.616048
+# 2 1st Qu.      1.198899
+# 3  Median      1.369606
+# 4    Mean      1.581114
+# 5 3rd Qu.      1.622415
 # 6    Max.    336.056382
 
 
@@ -1587,13 +1597,13 @@ rm(x, qnt, H)
 nrow(detour_sem_outliers)
 detour_sem_outliers <- summary(detour_sem_outliers$detour_modalt) %>% t() %>% t() %>% as.data.frame() %>% select(summary = Var1, detour_modalt = Freq)
 detour_sem_outliers
-#   summary detour_modalt
-# 1    Min.     0.5802978
-# 2 1st Qu.     1.0945629
-# 3  Median     1.2299905
-# 4    Mean     1.2835838
-# 5 3rd Qu.     1.3936300
-# 6    Max.     2.3513760
+# summary detour_modalt
+# 1    Min.      0.000000
+# 2 1st Qu.      1.193079
+# 3  Median      1.358546
+# 4    Mean      1.442062
+# 5 3rd Qu.      1.586233
+# 6    Max.      2.892463
 
 # 
 # # -------------------------- Sem loop -----------------------------------------
@@ -1664,26 +1674,26 @@ infraciclo_nao_cm <- infraciclo %>% filter(vg_contramao == 'não')
 nrow(infraciclo_nao_cm)
 head(infraciclo_nao_cm)
 
-# Resultado geral por pontos: 73.10924
+# Resultado geral por pontos: 74.11649
 sum(infraciclo_nao_cm$pts_intsct) / sum(infraciclo_nao_cm$pts_viagem) * 100
-# Média de acurácia por pontos: 81.62845
+# Média de acurácia por pontos: 82.16793
 mean(infraciclo_nao_cm$acuracia_pontos)
 # Mediana por pontos: 100
 median(infraciclo_nao_cm$acuracia_pontos)
 # Quantis
 quantile(infraciclo_nao_cm$acuracia_pontos, probs = quantis, na.rm = TRUE) %>% round(2)
 # Modelo sem ajustar LTS:
-#   25% 33.33%    50%    75%    85%    95%    99% 
-# 67.62  84.38 100.00 100.00 100.00 100.00 100.00 
+# 25% 33.33%    50%    75%    85%    95%    99% 
+# 69.35  86.36 100.00 100.00 100.00 100.00 100.00 
 data.frame(freq = quantile(infraciclo_nao_cm$acuracia_pontos, probs = quantis2, na.rm = TRUE)) %>% 
   rownames_to_column(var = 'desc') %>% 
   add_row(desc = 'Min',
           freq = min(infraciclo_nao_cm$acuracia_pontos), 
           .before = 1)
-#     desc        freq
+# desc        freq
 # 1    Min   0.9868421
-# 2    25%  67.6190476
-# 3 33.33%  84.3750000
+# 2    25%  69.3467337
+# 3 33.33%  86.3636364
 # 4    50% 100.0000000
 # 5 66.66% 100.0000000
 # 6    75% 100.0000000
@@ -1705,27 +1715,27 @@ hist(infraciclo_nao_cm$distance, pch = 16, cex = 1, breaks = 100)
 #   rownames_to_column(var = 'quantiles_ptos')
 
 
-# Média de acurácia  por extensão de linhas: 80.45305
+# Média de acurácia  por extensão de linhas: 80.83284
 mean(infraciclo_nao_cm$acuracia_linhas)
-# Mediana  por extensão de linhas: 94.7522
+# Mediana  por extensão de linhas: 94.9994
 median(infraciclo_nao_cm$acuracia_linhas)
 # Quantis  por extensão de linhas: 
 quantile(infraciclo_nao_cm$acuracia_linhas, probs = quantis, na.rm = TRUE) %>% round(2)
-#   25% 33.33%    50%    75%    85%    95%    99% 
-# 68.03  79.28  94.75  99.03  99.96 100.00 100.00
+# 25% 33.33%    50%    75%    85%    95%    99% 
+# 69.09  80.39  95.00  98.97  99.94 100.00 100.00 
 data.frame(freq = quantile(infraciclo_nao_cm$acuracia_linhas, probs = quantis2, na.rm = TRUE)) %>% 
   rownames_to_column(var = 'desc') %>% 
   add_row(desc = 'Min',
           freq = min(infraciclo_nao_cm$acuracia_linhas), 
           .before = 1)
-#     desc      freq
+# desc      freq
 # 1    Min   1.74391
-# 2    25%  68.02648
-# 3 33.33%  79.27831
-# 4    50%  94.75220
-# 5 66.66%  98.19294
-# 6    75%  99.02520
-# 7    85%  99.95682
+# 2    25%  69.09016
+# 3 33.33%  80.39195
+# 4    50%  94.99940
+# 5 66.66%  98.12463
+# 6    75%  98.97259
+# 7    85%  99.94420
 # 8    95% 100.00000
 # 9   100% 100.00000
 # Boxplot
@@ -1751,12 +1761,12 @@ infraciclo_nao_cm %>% filter(detour_modalt < 0.99) %>% nrow()
 detour
 # ATENÇÃO: Fatores de detour menores do que 1 são por alguma pequena diferença
 # entre o comprimento da linha reta e da rota calculada
-#   summary detour_modalt
+# summary detour_modalt
 # 1    Min.     0.5802978
-# 2 1st Qu.     1.1024417
-# 3  Median     1.2501587
-# 4    Mean     1.4484225
-# 5 3rd Qu.     1.4272530
+# 2 1st Qu.     1.1051063
+# 3  Median     1.2543484
+# 4    Mean     1.4522287
+# 5 3rd Qu.     1.4329581
 # 6    Max.   336.0563818
 
 
@@ -1776,13 +1786,13 @@ rm(x, qnt, H)
 nrow(detour_sem_outliers)
 detour_sem_outliers <- summary(detour_sem_outliers$detour_modalt) %>% t() %>% t() %>% as.data.frame() %>% select(summary = Var1, detour_modalt = Freq)
 detour_sem_outliers
-#   summary detour_modalt
+# summary detour_modalt
 # 1    Min.     0.5802978
-# 2 1st Qu.     1.0982136
-# 3  Median     1.2399028
-# 4    Mean     1.2955160
-# 5 3rd Qu.     1.4061727
-# 6    Max.     2.4015453
+# 2 1st Qu.     1.1007851
+# 3  Median     1.2439636
+# 4    Mean     1.2992742
+# 5 3rd Qu.     1.4111316
+# 6    Max.     2.4162670
 
 
 # # -------------------------- Com contramão -------------------------------------
@@ -1944,11 +1954,11 @@ detour_sem_outliers
 
 #----------------------------- Resultados finais  ------------------------------
 
-menor_peso_pontos %>% 
-  left_join(menor_peso_sem_loop_pontos,     by = 'quantiles_ptos') %>%
-  left_join(menor_peso_sem_cm_pontos,       by = 'quantiles_ptos') %>%
-  left_join(menor_peso_com_cm_pontos,       by = 'quantiles_ptos') %>%
-  left_join(menor_peso_sem_cm_lp_pq_pontos, by = 'quantiles_ptos')
+# menor_peso_pontos %>% 
+#   left_join(menor_peso_sem_loop_pontos,     by = 'quantiles_ptos') %>%
+#   left_join(menor_peso_sem_cm_pontos,       by = 'quantiles_ptos') %>%
+#   left_join(menor_peso_com_cm_pontos,       by = 'quantiles_ptos') %>%
+#   left_join(menor_peso_sem_cm_lp_pq_pontos, by = 'quantiles_ptos')
 #   quantiles_ptos peso_geral peso_sem_loop peso_sem_cm peso_com_cm peso_sem_cm_lp_pq
 # 1            25%         37.93103            38.29787          60.71429          31.66667                68.88889
 # 2         33.33%         48.78049            49.18033          77.27273          40.00000                83.63636
@@ -1959,11 +1969,11 @@ menor_peso_pontos %>%
 # 7            95%        100.00000           100.00000         100.00000         100.00000               100.00000
 # 8            99%        100.00000           100.00000         100.00000         100.00000               100.00000
 
-menor_peso_linhas %>% 
-  left_join(menor_peso_sem_loop_linhas,     by = 'quantiles_linhas') %>%
-  left_join(menor_peso_sem_cm_linhas,       by = 'quantiles_linhas') %>%
-  left_join(menor_peso_com_cm_linhas,       by = 'quantiles_linhas') %>%
-  left_join(menor_peso_sem_cm_lp_pq_linhas, by = 'quantiles_linhas')
+# menor_peso_linhas %>% 
+#   left_join(menor_peso_sem_loop_linhas,     by = 'quantiles_linhas') %>%
+#   left_join(menor_peso_sem_cm_linhas,       by = 'quantiles_linhas') %>%
+#   left_join(menor_peso_com_cm_linhas,       by = 'quantiles_linhas') %>%
+#   left_join(menor_peso_sem_cm_lp_pq_linhas, by = 'quantiles_linhas')
 #   quantiles_linhas peso_geral peso_sem_loop peso_sem_cm peso_com_cm peso_sem_cm_lp_pq
 # 1              25%         33.39980            33.26669          63.45275          24.61019                64.87885
 # 2           33.33%         44.20673            44.03210          75.55511          32.83474                76.33764
@@ -2002,15 +2012,15 @@ sem_cm <-
   left_join(gerar_summary(dist_nao_cm$acuracia_linhas, 'dist_n_cmao'), by = 'summary') %>%
   left_join(gerar_summary(infraciclo_nao_cm$acuracia_linhas, 'ciclo_n_cmao'), by = 'summary')
 
-# Resultados sem contramão, loop e com maior uso de estrutura cicloviária
-sem_cmlp <- 
-  gerar_summary(peso_nao_cm_lp_pq$acuracia_linhas, 'peso_n_cmlp') %>% 
-  left_join(gerar_summary(tempo_nao_cm_lp_pq$acuracia_linhas, 'tempo_n_cmlp'), by = 'summary') %>%
-  left_join(gerar_summary(dist_nao_cm_lp_pq$acuracia_linhas, 'dist_n_cmlp'), by = 'summary') %>%
-  left_join(gerar_summary(infraciclo_nao_cm_lp_pq$acuracia_linhas, 'ciclo_n_cmlp'), by = 'summary')
+# # Resultados sem contramão, loop e com maior uso de estrutura cicloviária
+# sem_cmlp <- 
+#   gerar_summary(peso_nao_cm_lp_pq$acuracia_linhas, 'peso_n_cmlp') %>% 
+#   left_join(gerar_summary(tempo_nao_cm_lp_pq$acuracia_linhas, 'tempo_n_cmlp'), by = 'summary') %>%
+#   left_join(gerar_summary(dist_nao_cm_lp_pq$acuracia_linhas, 'dist_n_cmlp'), by = 'summary') %>%
+#   left_join(gerar_summary(infraciclo_nao_cm_lp_pq$acuracia_linhas, 'ciclo_n_cmlp'), by = 'summary')
 
 
-todos_resultados <- gerais %>% left_join(sem_cm, by = 'summary') %>% left_join(sem_cmlp, by = 'summary')
+todos_resultados <- gerais %>% left_join(sem_cm, by = 'summary') #%>% left_join(sem_cmlp, by = 'summary')
 
 
 # Juntar todas as colunas de resultado por tipo em um dataframe  único
@@ -2060,23 +2070,23 @@ p
 
 
 # Percentual da extensão de uso da infra cicloviária
-round(sum(peso$infra_ciclo) / sum(peso$distance) * 100, 2) # 30.95
-round(sum(tempo$infra_ciclo) / sum(tempo$distance) * 100, 2) # 30.99
-round(sum(dist$infra_ciclo) / sum(dist$distance) * 100, 2) # 29.37
-round(sum(infraciclo$infra_ciclo) / sum(infraciclo$distance) * 100, 2) # 34.97
+round(sum(peso$infra_ciclo) / sum(peso$distance) * 100, 2) # 36.76
+round(sum(tempo$infra_ciclo) / sum(tempo$distance) * 100, 2) # 32.4
+round(sum(dist$infra_ciclo) / sum(dist$distance) * 100, 2) # 33.6
+round(sum(infraciclo$infra_ciclo) / sum(infraciclo$distance) * 100, 2) # 39.27
 
-round(sum(peso_nao_cm$infra_ciclo) / sum(peso_nao_cm$distance) * 100, 2) # 42.94
-round(sum(tempo_nao_cm$infra_ciclo) / sum(tempo_nao_cm$distance) * 100, 2) # 43.01
-round(sum(dist_nao_cm$infra_ciclo) / sum(dist_nao_cm$distance) * 100, 2) # 41.34
-round(sum(infraciclo_nao_cm$infra_ciclo) / sum(infraciclo_nao_cm$distance) * 100, 2) # 46.03
+round(sum(peso_nao_cm$infra_ciclo) / sum(peso_nao_cm$distance) * 100, 2) # 48.17
+round(sum(tempo_nao_cm$infra_ciclo) / sum(tempo_nao_cm$distance) * 100, 2) # 43.88
+round(sum(dist_nao_cm$infra_ciclo) / sum(dist_nao_cm$distance) * 100, 2) # 45.34
+round(sum(infraciclo_nao_cm$infra_ciclo) / sum(infraciclo_nao_cm$distance) * 100, 2) # 49.71
 
 # Percentual da extensão de uso da infra cicloviária - somente ciclofaixas
-round(sum(peso$ciclofaixa) / sum(peso$distance) * 100, 2) # 4.11
-round(sum(tempo$ciclofaixa) / sum(tempo$distance) * 100, 2) # 4.11
-round(sum(dist$ciclofaixa) / sum(dist$distance) * 100, 2) # 3.98
-round(sum(infraciclo$ciclofaixa) / sum(infraciclo$distance) * 100, 2) # 5.09
+round(sum(peso$ciclofaixa) / sum(peso$distance) * 100, 2) # 6.16
+round(sum(tempo$ciclofaixa) / sum(tempo$distance) * 100, 2) # 5.41
+round(sum(dist$ciclofaixa) / sum(dist$distance) * 100, 2) # 5.28
+round(sum(infraciclo$ciclofaixa) / sum(infraciclo$distance) * 100, 2) # 6.86
 
-round(sum(peso_nao_cm$ciclofaixa) / sum(peso_nao_cm$distance) * 100, 2) # 3.94
-round(sum(tempo_nao_cm$ciclofaixa) / sum(tempo_nao_cm$distance) * 100, 2) # 3.95
-round(sum(dist_nao_cm$ciclofaixa) / sum(dist_nao_cm$distance) * 100, 2) # 3.88
-round(sum(infraciclo_nao_cm$ciclofaixa) / sum(infraciclo_nao_cm$distance) * 100, 2) # 4.59
+round(sum(peso_nao_cm$ciclofaixa) / sum(peso_nao_cm$distance) * 100, 2) # 5.22
+round(sum(tempo_nao_cm$ciclofaixa) / sum(tempo_nao_cm$distance) * 100, 2) # 4.74
+round(sum(dist_nao_cm$ciclofaixa) / sum(dist_nao_cm$distance) * 100, 2) # 4.67
+round(sum(infraciclo_nao_cm$ciclofaixa) / sum(infraciclo_nao_cm$distance) * 100, 2) # 5.59

@@ -68,7 +68,7 @@ write_delim(escolas_hex, out_file, delim = ';')
 
 # Juntar ao grid de hexágonos para exportação
 hex_mat <- 
-  left_join(hex_mat, escolas_hex, by = 'id_hex') %>% 
+  left_join(hexagonos, escolas_hex, by = 'id_hex') %>% 
   replace(is.na(.), 0) %>% 
   relocate(geom, .after = last_col())
 
